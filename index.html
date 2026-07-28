@@ -1,696 +1,204 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>우리 반 학급 관리</title>
-<style>
-  :root {
-    --primary: #2f6f4f;
-    --primary-light: #e8f3ee;
-    --primary-dark: #235540;
-    --bg: #f7f8f7;
-    --card: #ffffff;
-    --text: #2b2f2d;
-    --text-sub: #6b736f;
-    --border: #e3e7e4;
-    --danger: #c0392b;
-    --tag-yellow: #fdf3d0; --tag-yellow-t: #8a6d1a;
-    --tag-orange: #fde8d0; --tag-orange-t: #8a521a;
-    --tag-purple: #ece4f7; --tag-purple-t: #5b3d8a;
-    --tag-brown:  #efe4dc; --tag-brown-t:  #6e4b33;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
-    background: var(--bg); color: var(--text); line-height: 1.6;
-  }
-  header {
-    background: var(--primary); color: #fff; padding: 20px 24px;
-  }
-  header .inner { max-width: 1060px; margin: 0 auto; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
-  header h1 { font-size: 1.35rem; font-weight: 700; }
-  header h1 [contenteditable] { outline: none; border-bottom: 1px dashed rgba(255,255,255,.5); padding: 0 2px; }
-  header .motto { font-size: .95rem; opacity: .9; }
-  header .motto [contenteditable] { outline: none; border-bottom: 1px dashed rgba(255,255,255,.4); padding: 0 2px; }
-
-  nav { background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
-  nav .inner { max-width: 1060px; margin: 0 auto; display: flex; overflow-x: auto; }
-  nav button {
-    background: none; border: none; padding: 13px 18px; font-size: .95rem; font-family: inherit;
-    color: var(--text-sub); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap;
-  }
-  nav button.active { color: var(--primary-dark); border-bottom-color: var(--primary); font-weight: 700; }
-  nav button:hover { color: var(--primary-dark); }
-
-  main { max-width: 1060px; margin: 0 auto; padding: 24px 16px 60px; }
-  section.tab { display: none; }
-  section.tab.active { display: block; }
-
-  .card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 20px 22px; margin-bottom: 18px;
-  }
-  .card h2 { font-size: 1.08rem; color: var(--primary-dark); margin-bottom: 12px; }
-  .card h2 .hint { font-size: .78rem; font-weight: 400; color: var(--text-sub); margin-left: 8px; }
-  .callout {
-    background: var(--primary-light); border: 1px solid #cfe3d8; border-radius: 10px;
-    padding: 14px 16px; margin-bottom: 18px; display: flex; gap: 10px;
-  }
-  .callout .emoji { font-size: 1.3rem; }
-  [data-edit] { outline: none; border-radius: 4px; }
-  [data-edit]:hover { background: rgba(47,111,79,.06); }
-  [data-edit]:focus { background: #fff; box-shadow: 0 0 0 2px rgba(47,111,79,.35); }
-
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
-  .mini-card { background: #fafbfa; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
-  .mini-card h3 { font-size: .95rem; margin-bottom: 6px; }
-  .mini-card div { font-size: .9rem; color: var(--text-sub); white-space: pre-wrap; }
-
-  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-  th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: center; vertical-align: middle; }
-  th { background: var(--primary-light); color: var(--primary-dark); font-weight: 700; }
-  td[contenteditable] { min-width: 60px; }
-  .table-wrap { overflow-x: auto; }
-
-  .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
-  .toolbar input[type="search"] {
-    flex: 1; min-width: 180px; padding: 8px 12px; border: 1px solid var(--border);
-    border-radius: 8px; font-family: inherit; font-size: .9rem;
-  }
-  .btn {
-    background: var(--primary); color: #fff; border: none; border-radius: 8px;
-    padding: 8px 14px; font-size: .88rem; font-family: inherit; cursor: pointer;
-  }
-  .btn:hover { background: var(--primary-dark); }
-  .btn.ghost { background: #fff; color: var(--primary-dark); border: 1px solid var(--primary); }
-  .btn.ghost:hover { background: var(--primary-light); }
-  .btn.danger { background: #fff; color: var(--danger); border: 1px solid var(--danger); }
-  .btn.danger:hover { background: #fdf0ee; }
-  .btn.small { padding: 4px 9px; font-size: .8rem; }
-
-  .tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: .76rem; margin: 1px; }
-  .tag.반장 { background: var(--tag-yellow); color: var(--tag-yellow-t); }
-  .tag.부반장 { background: var(--tag-orange); color: var(--tag-orange-t); }
-  .tag.도움반 { background: var(--tag-purple); color: var(--tag-purple-t); }
-  .tag.특기생 { background: var(--tag-brown); color: var(--tag-brown-t); }
-
-  dialog {
-    border: none; border-radius: 14px; padding: 0; width: min(560px, 92vw);
-    box-shadow: 0 20px 60px rgba(0,0,0,.25);
-  }
-  dialog::backdrop { background: rgba(0,0,0,.35); }
-  dialog form { padding: 24px; }
-  dialog h3 { color: var(--primary-dark); margin-bottom: 16px; font-size: 1.05rem; }
-  .field { margin-bottom: 12px; }
-  .field label { display: block; font-size: .82rem; color: var(--text-sub); margin-bottom: 3px; }
-  .field input[type="text"], .field input[type="tel"], .field input[type="number"],
-  .field input[type="date"], .field textarea, .field select {
-    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
-    font-family: inherit; font-size: .9rem;
-  }
-  .field textarea { resize: vertical; min-height: 60px; }
-  .field .checks { display: flex; gap: 14px; flex-wrap: wrap; font-size: .88rem; }
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
-  @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
-  .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-
-  .notice { font-size: .82rem; color: var(--text-sub); margin-top: 10px; }
-  .empty { text-align: center; color: var(--text-sub); padding: 30px 0; font-size: .9rem; }
-
-  footer { text-align: center; font-size: .78rem; color: var(--text-sub); padding: 20px; }
-
-  @media print {
-    nav, .toolbar, .btn, footer, .notice { display: none !important; }
-    header { background: none; color: var(--text); border-bottom: 2px solid var(--text); }
-    section.tab { display: block !important; page-break-after: always; }
-    .card { border: none; padding: 10px 0; }
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>우리 반 관리 콘솔</title>
+  <meta name="description" content="담임용 관리 콘솔 — 학생·상담·성적·자리배치·학급 도구" />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%AB%3C/text%3E%3C/svg%3E" />
 </head>
 <body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><b class="js-class">우리 반</b> <span>관리 콘솔</span></a>
+      <nav class="nav-links">
+        <a href="index.html" class="active">대시보드</a>
+        <a href="counsel.html">학생·상담</a>
+        <a href="grades.html">성적</a>
+        <a href="manage.html">학급 도구</a>
+        <a href="guide.html">학급 안내</a>
+      </nav>
+    </div>
+  </header>
 
-<header>
-  <div class="inner">
-    <h1>🏫 <span data-edit contenteditable="true" data-key="className">2026학년도 ○학년 ○반</span></h1>
-    <div class="motto">급훈 — <span data-edit contenteditable="true" data-key="motto">배려와 존중</span></div>
+  <main class="container">
+    <div class="page-head">
+      <h1>대시보드</h1>
+      <p><span class="js-class">우리 반</span> 담임용 관리 콘솔 — 모든 데이터는 이 컴퓨터의 브라우저에만 저장됩니다.</p>
+    </div>
+
+    <!-- 요약 -->
+    <div class="stat-row">
+      <div class="stat"><div class="stat-num" id="stStudents">0</div><div class="stat-label">등록 학생</div></div>
+      <div class="stat"><div class="stat-num" id="stRecords">0</div><div class="stat-label">상담 기록</div></div>
+      <div class="stat"><div class="stat-num" id="stExams">0</div><div class="stat-label">등록된 시험</div></div>
+      <div class="stat"><div class="stat-num" id="stLast">—</div><div class="stat-label">최근 상담일</div></div>
+    </div>
+
+    <!-- 관리 메뉴 -->
+    <div class="tile-grid">
+      <a class="tile" href="counsel.html">
+        <span class="tile-icon">🗂️</span>
+        <span><b>학생·상담 카드</b><small>학생별 개인 카드 · 상담 기록 관리</small></span>
+      </a>
+      <a class="tile" href="grades.html">
+        <span class="tile-icon">📊</span>
+        <span><b>성적 자료</b><small>점수 입력 · 평균 · 석차 · 추이 분석</small></span>
+      </a>
+      <a class="tile" href="manage.html#seatCard">
+        <span class="tile-icon">🪑</span>
+        <span><b>자리 배치</b><small>랜덤 자리 섞기 · 교탁 기준 배치도</small></span>
+      </a>
+      <a class="tile" href="manage.html">
+        <span class="tile-icon">🧰</span>
+        <span><b>학급 도구</b><small>명단 관리 · 발표자 뽑기 · 모둠 · 청소 당번</small></span>
+      </a>
+      <a class="tile" href="guide.html">
+        <span class="tile-icon">📋</span>
+        <span><b>학급 안내</b><small>급훈 · 학급 규칙 · 시간표 편집 → 인쇄 게시</small></span>
+      </a>
+    </div>
+
+    <!-- 최근 상담 -->
+    <section class="card">
+      <h2 class="card-title">최근 상담 기록</h2>
+      <div id="recentRecs"></div>
+      <p class="empty-hint" id="recentEmpty">아직 상담 기록이 없습니다. 우측 하단 채팅 버튼으로 빠르게 입력할 수 있어요.</p>
+    </section>
+
+    <!-- 설정 -->
+    <h2 class="section-h">설정 · 데이터</h2>
+    <div class="manage-grid">
+      <section class="card">
+        <h2 class="card-title">⚙️ 학급 이름 설정</h2>
+        <div class="row">
+          <input type="text" id="clsName" maxlength="30" placeholder="예: 2학년 3반" />
+          <button class="btn" id="clsSave">저장</button>
+        </div>
+        <p class="save-status" id="clsStatus" style="text-align:left"></p>
+        <p class="note">저장하면 모든 페이지 상단과 자리 배치표 인쇄물에 학급 이름이 표시됩니다.</p>
+      </section>
+      <section class="card">
+        <h2 class="card-title">💾 데이터 백업 · 복원</h2>
+        <p class="help">명단·상담·성적·자리배치 등 모든 데이터를 JSON 파일로 내보내거나 복원합니다. 컴퓨터를 바꿀 때 사용하세요.</p>
+        <div class="row" style="flex-wrap:wrap">
+          <button class="btn" id="backupBtn">📥 내보내기</button>
+          <button class="btn btn-ghost" id="restoreBtn">📤 가져오기</button>
+          <input type="file" id="restoreFile" accept=".json" hidden />
+          <button class="btn btn-danger" id="wipeBtn">전체 초기화</button>
+        </div>
+        <p class="note">백업 파일에는 학생 개인정보가 포함되므로 개인 저장 공간에만 보관하세요.</p>
+      </section>
+    </div>
+
+    <footer class="foot"><span><span class="js-class">우리 반</span> 관리 콘솔 · 데이터는 이 컴퓨터에만 저장됩니다</span></footer>
+  </main>
+
+  <!-- 상담 빠른 입력 채팅 -->
+  <button class="chat-fab" id="chatFab" aria-label="상담 빠른 입력 열기">🗨️</button>
+  <div class="chat-panel" id="chatPanel" hidden>
+    <div class="chat-head">
+      <span>상담 빠른 입력</span>
+      <button class="chat-close" id="chatClose" aria-label="닫기">✕</button>
+    </div>
+    <div class="chat-msgs" id="chatMsgs"></div>
+    <div class="chat-inputrow">
+      <textarea id="chatInput" rows="1" placeholder="예: 김하늘 오늘 친구와 다툼 상담…"></textarea>
+      <button class="chat-send" id="chatSend" aria-label="보내기">↑</button>
+    </div>
   </div>
-</header>
+  <script src="chat.js"></script>
 
-<nav>
-  <div class="inner">
-    <button class="active" data-tab="guide">학급 안내</button>
-    <button data-tab="timetable">시간표</button>
-    <button data-tab="students">학생 관리</button>
-    <button data-tab="roles">1인 1역</button>
-    <button data-tab="journal">학급 일지</button>
-    <button data-tab="data">데이터 관리</button>
-  </div>
-</nav>
+  <script>
+    (function () {
+      const load = (k, fb) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch { return fb; } };
+      const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const CAT_EMOJI = { '학업': '📚', '교우관계': '🤝', '진로': '🧭', '가정': '🏠', '생활': '🌱' };
 
-<main>
+      const roster = load('manage-roster', []);
+      const records = load('counsel-records', []);
+      const grades = load('grades-data', { exams: [] });
 
-  <!-- ============ 학급 안내 ============ -->
-  <section class="tab active" id="tab-guide">
-    <div class="callout">
-      <div class="emoji">🌿</div>
-      <div><strong>학급 운영 철학</strong><br>
-        <span data-edit contenteditable="true" data-key="philosophy">다양한 가치관과 개성을 가진 학생들이 서로를 이해하고 존중하는 태도를 바탕으로, 배려를 실천하는 공동체 문화를 형성하여 모두가 함께 성장하는 학급을 만들고자 합니다.</span>
-      </div>
-    </div>
+      document.getElementById('stStudents').textContent = roster.length;
+      document.getElementById('stRecords').textContent = records.length;
+      document.getElementById('stExams').textContent = grades.exams.length;
+      const dates = records.map((r) => r.date).filter(Boolean).sort();
+      document.getElementById('stLast').textContent = dates.length ? dates[dates.length - 1].slice(5).replace('-', '/') : '—';
 
-    <div class="card">
-      <h2>학급 운영 방향 <span class="hint">✏️ 내용을 클릭하면 바로 수정할 수 있습니다</span></h2>
-      <div class="grid2">
-        <div class="mini-card"><h3>📘 학급 중점 프로그램</h3>
-          <div data-edit contenteditable="true" data-key="dir1">• 1인 1역 책임제 — 학급 내 역할 분담 후 꾸준히 실천
-• 학급 자치회의 — 정기 회의로 스스로 문제 해결
-• 진로·진학 탐색 활동 — 다양한 직업·진로 프로그램 참여</div></div>
-        <div class="mini-card"><h3>📗 학력 제고</h3>
-          <div data-edit contenteditable="true" data-key="dir2">• 스스로 공부하는 습관을 기를 수 있도록 면학 분위기 만들기
-• 매일 플래너를 활용하여 계획적인 생활 습관 형성
-• 평가 결과를 분석하여 개인별 맞춤 지도</div></div>
-        <div class="mini-card"><h3>🤝 인성 및 생활지도</h3>
-          <div data-edit contenteditable="true" data-key="dir3">• 먼저 밝게 인사하는 생활 예절 실천
-• 자신의 물건을 스스로 관리하는 자기 관리 습관
-• 나눔과 배려를 실천하며 더불어 살아가는 태도 키우기</div></div>
-        <div class="mini-card"><h3>🌱 기대 효과</h3>
-          <div data-edit contenteditable="true" data-key="dir4">• 배려하고 존중하는 학급 문화 형성
-• 자기주도적 학습 습관과 바른 생활 태도 정착
-• 학업 능력과 인성이 균형 있게 발달</div></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>학급 규칙 &amp; 약속</h2>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th style="width:120px">영역</th><th>규칙 내용</th><th style="width:80px">기준</th></tr></thead>
-          <tbody>
-            <tr><td>⏰ 시간 약속</td><td style="text-align:left" data-edit contenteditable="true" data-key="rule1">정해진 시간 전에 착석 완료 / 결석·조퇴는 사전에 학부모 연락 + 담임 보고</td><td data-edit contenteditable="true" data-key="rule1b">필수</td></tr>
-            <tr><td>📱 휴대폰</td><td style="text-align:left" data-edit contenteditable="true" data-key="rule2">등교 즉시 수거함에 보관 / 필요시 담임에게 문의</td><td data-edit contenteditable="true" data-key="rule2b">금지</td></tr>
-            <tr><td>🗣️ 언어·태도</td><td style="text-align:left" data-edit contenteditable="true" data-key="rule3">욕설·비하 표현 사용 금지 / 발언 시 손 들기, 경청 자세 유지</td><td data-edit contenteditable="true" data-key="rule3b">금지</td></tr>
-            <tr><td>🧹 청소·당번</td><td style="text-align:left" data-edit contenteditable="true" data-key="rule4">주간 당번표 기준으로 청소 구역 담당 / 방과 후 10분 청소 실시</td><td data-edit contenteditable="true" data-key="rule4b">필수</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>담임 연락처 &amp; 상담</h2>
-      <div class="callout" style="margin-bottom:12px">
-        <div class="emoji">📞</div>
-        <div data-edit contenteditable="true" data-key="contact"><strong>담임 ○○○ 선생님</strong> · 부담임 ○○○ 선생님<br>이메일: teacher@school.kr / 연락 가능: 평일 08:00–17:00</div>
-      </div>
-      <div data-edit contenteditable="true" data-key="counsel">• 수시 상담: 쉬는 시간·점심 시간·방과 후 언제든 가능. 말하기 어려우면 쪽지·문자 OK. 비밀 보장.
-• 정기 상담: 3월 · 9월 중 전원 대상
-• 상담 절차: 연락·메모 → 일정 조율 → 대면 상담</div>
-    </div>
-  </section>
-
-  <!-- ============ 시간표 ============ -->
-  <section class="tab" id="tab-timetable">
-    <div class="card">
-      <h2>주간 시간표 <span class="hint">✏️ 칸을 클릭해 과목·선생님을 입력하세요</span></h2>
-      <div class="table-wrap">
-        <table id="timetable">
-          <thead><tr><th style="width:110px">교시</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <p class="notice">교시 이름(시각 포함)도 수정할 수 있습니다. 인쇄(Ctrl+P)하면 교실 게시용으로 쓸 수 있어요.</p>
-    </div>
-  </section>
-
-  <!-- ============ 학생 관리 ============ -->
-  <section class="tab" id="tab-students">
-    <div class="card">
-      <h2>학생 명렬표 &amp; 학생 카드</h2>
-      <div class="toolbar">
-        <input type="search" id="studentSearch" placeholder="이름·번호·특이사항 검색">
-        <button class="btn" id="addStudentBtn">＋ 학생 추가</button>
-        <button class="btn ghost" id="exportCsvBtn">CSV 내보내기</button>
-      </div>
-      <div class="table-wrap">
-        <table id="studentTable">
-          <thead>
-            <tr>
-              <th style="width:52px">번호</th><th>이름</th><th>학생 연락처</th><th>보호자 연락처</th>
-              <th>특이사항</th><th>알레르기/질병</th><th>비고</th><th style="width:110px">관리</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <div class="empty" id="studentEmpty">아직 등록된 학생이 없습니다. [＋ 학생 추가] 버튼으로 시작하세요.</div>
-      <p class="notice">🔒 모든 데이터는 이 브라우저(내 컴퓨터)에만 저장되며 외부로 전송되지 않습니다. 학생 개인정보가 포함되므로 공용 컴퓨터에서는 사용 후 [데이터 관리]에서 초기화해 주세요.</p>
-    </div>
-  </section>
-
-  <!-- ============ 1인 1역 ============ -->
-  <section class="tab" id="tab-roles">
-    <div class="card">
-      <h2>1인 1역 책임제</h2>
-      <div class="toolbar">
-        <button class="btn" id="addRoleBtn">＋ 역할 추가</button>
-      </div>
-      <div class="table-wrap">
-        <table id="roleTable">
-          <thead><tr><th style="width:160px">역할</th><th>하는 일</th><th style="width:120px">담당 학생</th><th style="width:110px">관리</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <p class="notice">기본 역할 목록은 예시입니다. 학급 사정에 맞게 추가·수정하세요.</p>
-    </div>
-  </section>
-
-  <!-- ============ 학급 일지 ============ -->
-  <section class="tab" id="tab-journal">
-    <div class="card">
-      <h2>학급 일지</h2>
-      <div class="toolbar">
-        <button class="btn" id="addJournalBtn">＋ 오늘 일지 쓰기</button>
-      </div>
-      <div id="journalList"></div>
-      <div class="empty" id="journalEmpty">작성된 일지가 없습니다. 조·종례 전달사항, 특이사항, 상담 메모를 날짜별로 기록해 보세요.</div>
-    </div>
-  </section>
-
-  <!-- ============ 데이터 관리 ============ -->
-  <section class="tab" id="tab-data">
-    <div class="card">
-      <h2>데이터 백업 &amp; 복원</h2>
-      <p style="font-size:.9rem; margin-bottom:14px">
-        이 페이지의 모든 내용(학급 안내, 시간표, 학생, 1인 1역, 일지)은 <strong>브라우저의 localStorage</strong>에 저장됩니다.
-        컴퓨터를 바꾸거나 데이터를 보관하려면 JSON 파일로 내보내기/가져오기를 사용하세요.
-      </p>
-      <div class="toolbar">
-        <button class="btn" id="exportJsonBtn">📥 전체 데이터 내보내기 (JSON)</button>
-        <button class="btn ghost" id="importJsonBtn">📤 데이터 가져오기</button>
-        <input type="file" id="importFile" accept=".json" hidden>
-        <button class="btn danger" id="resetBtn">전체 초기화</button>
-      </div>
-      <p class="notice">💡 다른 선생님께 이 도구를 공유할 때는 <strong>데이터가 없는 원본 HTML 파일(또는 링크)만</strong> 전달하세요. 학생 데이터는 각자의 브라우저에만 남습니다.</p>
-    </div>
-  </section>
-
-</main>
-
-<footer>학급 관리 페이지 · 데이터는 브라우저에만 저장됩니다</footer>
-
-<!-- 학생 추가/수정 다이얼로그 -->
-<dialog id="studentDialog">
-  <form method="dialog" id="studentForm">
-    <h3 id="studentDialogTitle">학생 추가</h3>
-    <div class="form-grid">
-      <div class="field"><label>번호</label><input type="number" name="num" min="1" required></div>
-      <div class="field"><label>이름</label><input type="text" name="name" required></div>
-      <div class="field"><label>학생 연락처</label><input type="tel" name="phone" placeholder="010-0000-0000"></div>
-      <div class="field"><label>보호자 연락처</label><input type="tel" name="parentPhone" placeholder="010-0000-0000"></div>
-      <div class="field"><label>생년월일</label><input type="date" name="birth"></div>
-      <div class="field"><label>알레르기/질병</label><input type="text" name="health"></div>
-    </div>
-    <div class="field"><label>특이사항</label>
-      <div class="checks">
-        <label><input type="checkbox" name="tags" value="반장"> 반장</label>
-        <label><input type="checkbox" name="tags" value="부반장"> 부반장</label>
-        <label><input type="checkbox" name="tags" value="도움반"> 도움반</label>
-        <label><input type="checkbox" name="tags" value="특기생"> 특기생</label>
-      </div>
-    </div>
-    <div class="field"><label>비고 (상담 메모, 교우관계, 진로 희망 등)</label><textarea name="memo"></textarea></div>
-    <div class="dialog-actions">
-      <button type="button" class="btn ghost" id="studentCancelBtn">취소</button>
-      <button type="submit" class="btn">저장</button>
-    </div>
-  </form>
-</dialog>
-
-<!-- 역할 추가/수정 다이얼로그 -->
-<dialog id="roleDialog">
-  <form method="dialog" id="roleForm">
-    <h3 id="roleDialogTitle">역할 추가</h3>
-    <div class="field"><label>역할 이름</label><input type="text" name="title" required placeholder="예: 우유 관리"></div>
-    <div class="field"><label>하는 일</label><input type="text" name="desc" placeholder="예: 우유 배부 및 정리"></div>
-    <div class="field"><label>담당 학생</label><input type="text" name="student" placeholder="예: 홍길동"></div>
-    <div class="dialog-actions">
-      <button type="button" class="btn ghost" id="roleCancelBtn">취소</button>
-      <button type="submit" class="btn">저장</button>
-    </div>
-  </form>
-</dialog>
-
-<!-- 일지 다이얼로그 -->
-<dialog id="journalDialog">
-  <form method="dialog" id="journalForm">
-    <h3 id="journalDialogTitle">학급 일지</h3>
-    <div class="field"><label>날짜</label><input type="date" name="date" required></div>
-    <div class="field"><label>내용 (전달사항 · 특이사항 · 상담 메모)</label><textarea name="body" rows="5" required></textarea></div>
-    <div class="dialog-actions">
-      <button type="button" class="btn ghost" id="journalCancelBtn">취소</button>
-      <button type="submit" class="btn">저장</button>
-    </div>
-  </form>
-</dialog>
-
-<script>
-(function () {
-  'use strict';
-  var STORE_KEY = 'classManager.v1';
-
-  var DEFAULT_PERIODS = [
-    '1교시 (08:50)', '2교시 (09:45)', '3교시 (10:40)', '4교시 (11:35)',
-    '점심 🍱', '5교시 (13:20)', '6교시 (14:15)', '7교시 (15:10)'
-  ];
-  var DEFAULT_ROLES = [
-    { title: '출결 관리', desc: '출석부 관리 보조', student: '' },
-    { title: '우유 관리', desc: '우유 배부 및 정리', student: '' },
-    { title: '생일 관리', desc: '학급 생일자 안내', student: '' },
-    { title: '보건 도우미', desc: '응급 상황 보건실 연락', student: '' },
-    { title: '전등/에어컨 관리', desc: '조명 및 냉난방기 관리', student: '' },
-    { title: '창문/환기 관리', desc: '환기 및 창문 개폐', student: '' },
-    { title: '분실물 관리', desc: '분실물 보관 및 안내', student: '' },
-    { title: '교탁/칠판 관리', desc: '교탁 정리 및 칠판 관리', student: '' },
-    { title: '태블릿 관리', desc: '학습용 태블릿 충전·배부', student: '' },
-    { title: '게시판 관리', desc: '학급 게시판 꾸미기·관리', student: '' }
-  ];
-
-  var state = load();
-
-  function load() {
-    try {
-      var raw = localStorage.getItem(STORE_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch (e) { /* 손상된 데이터는 초기값으로 대체 */ }
-    return {
-      texts: {},
-      timetable: { periods: DEFAULT_PERIODS.slice(), cells: {} },
-      students: [],
-      roles: DEFAULT_ROLES.map(function (r) { return Object.assign({}, r); }),
-      journal: []
-    };
-  }
-  function save() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
-
-  /* ---------- 탭 ---------- */
-  document.querySelectorAll('nav button').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      document.querySelectorAll('nav button').forEach(function (b) { b.classList.remove('active'); });
-      document.querySelectorAll('section.tab').forEach(function (s) { s.classList.remove('active'); });
-      btn.classList.add('active');
-      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-    });
-  });
-
-  /* ---------- 편집 가능 텍스트 ---------- */
-  document.querySelectorAll('[data-key]').forEach(function (el) {
-    var key = el.dataset.key;
-    if (state.texts[key] !== undefined) el.innerText = state.texts[key];
-    el.addEventListener('blur', function () {
-      state.texts[key] = el.innerText;
-      save();
-    });
-  });
-
-  /* ---------- 시간표 ---------- */
-  var ttBody = document.querySelector('#timetable tbody');
-  function renderTimetable() {
-    ttBody.innerHTML = '';
-    state.timetable.periods.forEach(function (period, r) {
-      var tr = document.createElement('tr');
-      var th = document.createElement('td');
-      th.contentEditable = 'true';
-      th.style.fontWeight = '700';
-      th.style.background = 'var(--primary-light)';
-      th.innerText = period;
-      th.addEventListener('blur', function () {
-        state.timetable.periods[r] = th.innerText; save();
-      });
-      tr.appendChild(th);
-      for (var c = 0; c < 5; c++) {
-        (function (cellKey) {
-          var td = document.createElement('td');
-          td.contentEditable = 'true';
-          td.innerText = state.timetable.cells[cellKey] || '';
-          td.addEventListener('blur', function () {
-            state.timetable.cells[cellKey] = td.innerText; save();
-          });
-          tr.appendChild(td);
-        })(r + '-' + c);
+      const recent = records.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)) || b.id - a.id).slice(0, 5);
+      if (recent.length) {
+        document.getElementById('recentEmpty').classList.add('hidden');
+        document.getElementById('recentRecs').innerHTML = recent.map((r) => `
+          <div class="rec">
+            <div class="post-top">
+              <span class="rec-name">${esc(r.name)} <span class="tag">${CAT_EMOJI[r.cat] || ''} ${esc(r.cat)}</span></span>
+              <span class="post-time">${esc(r.date)}</span>
+            </div>
+            <div class="post-body">${esc(r.text.length > 90 ? r.text.slice(0, 90) + '…' : r.text)}</div>
+          </div>`).join('');
       }
-      ttBody.appendChild(tr);
-    });
-  }
 
-  /* ---------- 학생 관리 ---------- */
-  var studentDialog = document.getElementById('studentDialog');
-  var studentForm = document.getElementById('studentForm');
-  var editingStudent = null;
+      // ── 학급 이름 설정 ──
+      const NAME_KEY = 'console-class-name';
+      const clsIn = document.getElementById('clsName');
+      try { clsIn.value = localStorage.getItem(NAME_KEY) || ''; } catch {}
+      document.getElementById('clsSave').addEventListener('click', () => {
+        const v = clsIn.value.trim();
+        try { v ? localStorage.setItem(NAME_KEY, v) : localStorage.removeItem(NAME_KEY); } catch {}
+        document.getElementById('clsStatus').textContent = '✓ 저장했습니다';
+        setTimeout(() => location.reload(), 400);
+      });
 
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"]/g, function (ch) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch];
-    });
-  }
+      // ── 데이터 백업 · 복원 ──
+      // 콘솔이 사용하는 localStorage 키 접두사
+      const PREFIXES = ['console-', 'manage-', 'counsel-', 'grades-', 'guide-'];
+      const ownKeys = () => Object.keys(localStorage).filter((k) => PREFIXES.some((p) => k.startsWith(p)));
 
-  function renderStudents() {
-    var q = document.getElementById('studentSearch').value.trim().toLowerCase();
-    var tbody = document.querySelector('#studentTable tbody');
-    tbody.innerHTML = '';
-    var list = state.students.slice().sort(function (a, b) { return (a.num || 0) - (b.num || 0); });
-    var shown = 0;
-    list.forEach(function (s) {
-      var hay = [s.num, s.name, (s.tags || []).join(' '), s.memo, s.health].join(' ').toLowerCase();
-      if (q && hay.indexOf(q) === -1) return;
-      shown++;
-      var tr = document.createElement('tr');
-      tr.innerHTML =
-        '<td>' + esc(s.num) + '</td>' +
-        '<td><strong>' + esc(s.name) + '</strong>' + (s.birth ? '<br><span style="font-size:.75rem;color:var(--text-sub)">' + esc(s.birth) + '</span>' : '') + '</td>' +
-        '<td>' + esc(s.phone) + '</td>' +
-        '<td>' + esc(s.parentPhone) + '</td>' +
-        '<td>' + (s.tags || []).map(function (t) { return '<span class="tag ' + esc(t) + '">' + esc(t) + '</span>'; }).join('') + '</td>' +
-        '<td>' + esc(s.health) + '</td>' +
-        '<td style="text-align:left">' + esc(s.memo) + '</td>' +
-        '<td></td>';
-      var actions = tr.lastElementChild;
-      var editBtn = document.createElement('button');
-      editBtn.className = 'btn ghost small'; editBtn.textContent = '수정';
-      editBtn.addEventListener('click', function () { openStudentDialog(s); });
-      var delBtn = document.createElement('button');
-      delBtn.className = 'btn danger small'; delBtn.textContent = '삭제'; delBtn.style.marginLeft = '4px';
-      delBtn.addEventListener('click', function () {
-        if (confirm(s.name + ' 학생을 삭제할까요?')) {
-          state.students.splice(state.students.indexOf(s), 1); save(); renderStudents();
+      document.getElementById('backupBtn').addEventListener('click', () => {
+        const data = {};
+        ownKeys().forEach((k) => { data[k] = localStorage.getItem(k); });
+        const blob = new Blob([JSON.stringify({ app: 'class-console', data }, null, 2)], { type: 'application/json;charset=utf-8' });
+        const a = document.createElement('a');
+        const d = new Date();
+        const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        a.href = URL.createObjectURL(blob);
+        a.download = `학급콘솔_백업_${stamp}.json`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+      document.getElementById('restoreBtn').addEventListener('click', () => document.getElementById('restoreFile').click());
+      document.getElementById('restoreFile').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(reader.result);
+            if (!parsed || parsed.app !== 'class-console' || typeof parsed.data !== 'object') throw new Error();
+            if (!confirm('현재 데이터를 백업 파일 내용으로 덮어씁니다. 계속할까요?')) return;
+            ownKeys().forEach((k) => localStorage.removeItem(k));
+            Object.entries(parsed.data).forEach(([k, v]) => {
+              if (PREFIXES.some((p) => k.startsWith(p)) && typeof v === 'string') localStorage.setItem(k, v);
+            });
+            location.reload();
+          } catch {
+            alert('올바른 백업 파일이 아닙니다.');
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+      });
+      document.getElementById('wipeBtn').addEventListener('click', () => {
+        if (confirm('명단·상담·성적·자리배치 등 모든 데이터를 삭제합니다. 계속할까요?') &&
+            confirm('정말 초기화할까요? 되돌릴 수 없습니다.')) {
+          ownKeys().forEach((k) => localStorage.removeItem(k));
+          location.reload();
         }
       });
-      actions.appendChild(editBtn); actions.appendChild(delBtn);
-      tbody.appendChild(tr);
-    });
-    document.getElementById('studentEmpty').style.display = shown ? 'none' : 'block';
-    document.getElementById('studentTable').style.display = shown ? '' : 'none';
-  }
-
-  function openStudentDialog(student) {
-    editingStudent = student || null;
-    document.getElementById('studentDialogTitle').textContent = student ? '학생 정보 수정' : '학생 추가';
-    studentForm.reset();
-    if (student) {
-      studentForm.num.value = student.num || '';
-      studentForm.name.value = student.name || '';
-      studentForm.phone.value = student.phone || '';
-      studentForm.parentPhone.value = student.parentPhone || '';
-      studentForm.birth.value = student.birth || '';
-      studentForm.health.value = student.health || '';
-      studentForm.memo.value = student.memo || '';
-      Array.prototype.forEach.call(studentForm.querySelectorAll('input[name="tags"]'), function (cb) {
-        cb.checked = (student.tags || []).indexOf(cb.value) !== -1;
-      });
-    }
-    studentDialog.showModal();
-  }
-
-  studentForm.addEventListener('submit', function () {
-    var tags = Array.prototype.filter.call(studentForm.querySelectorAll('input[name="tags"]'), function (cb) { return cb.checked; })
-      .map(function (cb) { return cb.value; });
-    var data = {
-      num: parseInt(studentForm.num.value, 10) || 0,
-      name: studentForm.name.value.trim(),
-      phone: studentForm.phone.value.trim(),
-      parentPhone: studentForm.parentPhone.value.trim(),
-      birth: studentForm.birth.value,
-      health: studentForm.health.value.trim(),
-      memo: studentForm.memo.value.trim(),
-      tags: tags
-    };
-    if (editingStudent) Object.assign(editingStudent, data);
-    else state.students.push(data);
-    save(); renderStudents();
-  });
-  document.getElementById('addStudentBtn').addEventListener('click', function () { openStudentDialog(null); });
-  document.getElementById('studentCancelBtn').addEventListener('click', function () { studentDialog.close(); });
-  document.getElementById('studentSearch').addEventListener('input', renderStudents);
-
-  document.getElementById('exportCsvBtn').addEventListener('click', function () {
-    var rows = [['번호', '이름', '생년월일', '학생 연락처', '보호자 연락처', '특이사항', '알레르기/질병', '비고']];
-    state.students.slice().sort(function (a, b) { return (a.num || 0) - (b.num || 0); }).forEach(function (s) {
-      rows.push([s.num, s.name, s.birth, s.phone, s.parentPhone, (s.tags || []).join('·'), s.health, s.memo]);
-    });
-    var csv = '﻿' + rows.map(function (r) {
-      return r.map(function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }).join(',');
-    }).join('\r\n');
-    download('학생명렬표.csv', csv, 'text/csv');
-  });
-
-  /* ---------- 1인 1역 ---------- */
-  var roleDialog = document.getElementById('roleDialog');
-  var roleForm = document.getElementById('roleForm');
-  var editingRole = null;
-
-  function renderRoles() {
-    var tbody = document.querySelector('#roleTable tbody');
-    tbody.innerHTML = '';
-    state.roles.forEach(function (r) {
-      var tr = document.createElement('tr');
-      tr.innerHTML =
-        '<td style="font-weight:700">' + esc(r.title) + '</td>' +
-        '<td style="text-align:left">' + esc(r.desc) + '</td>' +
-        '<td>' + esc(r.student) + '</td>' +
-        '<td></td>';
-      var actions = tr.lastElementChild;
-      var editBtn = document.createElement('button');
-      editBtn.className = 'btn ghost small'; editBtn.textContent = '수정';
-      editBtn.addEventListener('click', function () {
-        editingRole = r;
-        document.getElementById('roleDialogTitle').textContent = '역할 수정';
-        roleForm.title.value = r.title; roleForm.desc.value = r.desc; roleForm.student.value = r.student;
-        roleDialog.showModal();
-      });
-      var delBtn = document.createElement('button');
-      delBtn.className = 'btn danger small'; delBtn.textContent = '삭제'; delBtn.style.marginLeft = '4px';
-      delBtn.addEventListener('click', function () {
-        if (confirm('[' + r.title + '] 역할을 삭제할까요?')) {
-          state.roles.splice(state.roles.indexOf(r), 1); save(); renderRoles();
-        }
-      });
-      actions.appendChild(editBtn); actions.appendChild(delBtn);
-      tbody.appendChild(tr);
-    });
-  }
-  roleForm.addEventListener('submit', function () {
-    var data = { title: roleForm.title.value.trim(), desc: roleForm.desc.value.trim(), student: roleForm.student.value.trim() };
-    if (editingRole) Object.assign(editingRole, data);
-    else state.roles.push(data);
-    save(); renderRoles();
-  });
-  document.getElementById('addRoleBtn').addEventListener('click', function () {
-    editingRole = null;
-    document.getElementById('roleDialogTitle').textContent = '역할 추가';
-    roleForm.reset(); roleDialog.showModal();
-  });
-  document.getElementById('roleCancelBtn').addEventListener('click', function () { roleDialog.close(); });
-
-  /* ---------- 학급 일지 ---------- */
-  var journalDialog = document.getElementById('journalDialog');
-  var journalForm = document.getElementById('journalForm');
-  var editingJournal = null;
-
-  function renderJournal() {
-    var wrap = document.getElementById('journalList');
-    wrap.innerHTML = '';
-    var list = state.journal.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
-    list.forEach(function (j) {
-      var div = document.createElement('div');
-      div.className = 'mini-card';
-      div.style.marginBottom = '10px';
-      var head = document.createElement('h3');
-      head.textContent = '📅 ' + j.date;
-      var body = document.createElement('div');
-      body.textContent = j.body;
-      var actions = document.createElement('div');
-      actions.style.marginTop = '8px';
-      var editBtn = document.createElement('button');
-      editBtn.className = 'btn ghost small'; editBtn.textContent = '수정';
-      editBtn.addEventListener('click', function () {
-        editingJournal = j;
-        document.getElementById('journalDialogTitle').textContent = '일지 수정';
-        journalForm.date.value = j.date; journalForm.body.value = j.body;
-        journalDialog.showModal();
-      });
-      var delBtn = document.createElement('button');
-      delBtn.className = 'btn danger small'; delBtn.textContent = '삭제'; delBtn.style.marginLeft = '4px';
-      delBtn.addEventListener('click', function () {
-        if (confirm(j.date + ' 일지를 삭제할까요?')) {
-          state.journal.splice(state.journal.indexOf(j), 1); save(); renderJournal();
-        }
-      });
-      actions.appendChild(editBtn); actions.appendChild(delBtn);
-      div.appendChild(head); div.appendChild(body); div.appendChild(actions);
-      wrap.appendChild(div);
-    });
-    document.getElementById('journalEmpty').style.display = list.length ? 'none' : 'block';
-  }
-  journalForm.addEventListener('submit', function () {
-    var data = { date: journalForm.date.value, body: journalForm.body.value.trim() };
-    if (editingJournal) Object.assign(editingJournal, data);
-    else state.journal.push(data);
-    save(); renderJournal();
-  });
-  document.getElementById('addJournalBtn').addEventListener('click', function () {
-    editingJournal = null;
-    document.getElementById('journalDialogTitle').textContent = '학급 일지';
-    journalForm.reset();
-    journalForm.date.value = new Date().toISOString().slice(0, 10);
-    journalDialog.showModal();
-  });
-  document.getElementById('journalCancelBtn').addEventListener('click', function () { journalDialog.close(); });
-
-  /* ---------- 데이터 관리 ---------- */
-  function download(filename, content, type) {
-    var blob = new Blob([content], { type: type + ';charset=utf-8' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-  document.getElementById('exportJsonBtn').addEventListener('click', function () {
-    download('학급관리_백업_' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(state, null, 2), 'application/json');
-  });
-  document.getElementById('importJsonBtn').addEventListener('click', function () {
-    document.getElementById('importFile').click();
-  });
-  document.getElementById('importFile').addEventListener('change', function (e) {
-    var file = e.target.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function () {
-      try {
-        var data = JSON.parse(reader.result);
-        if (!data || typeof data !== 'object' || !data.timetable) throw new Error('형식 오류');
-        if (!confirm('현재 데이터를 가져온 파일로 덮어씁니다. 계속할까요?')) return;
-        state = data; save(); location.reload();
-      } catch (err) {
-        alert('올바른 백업 파일이 아닙니다.');
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  });
-  document.getElementById('resetBtn').addEventListener('click', function () {
-    if (confirm('모든 데이터(학급 안내, 시간표, 학생, 역할, 일지)를 삭제하고 초기 상태로 되돌립니다. 계속할까요?') &&
-        confirm('정말 초기화할까요? 되돌릴 수 없습니다.')) {
-      localStorage.removeItem(STORE_KEY);
-      location.reload();
-    }
-  });
-
-  renderTimetable();
-  renderStudents();
-  renderRoles();
-  renderJournal();
-})();
-</script>
+    })();
+  </script>
+  <script src="console.js"></script>
 </body>
 </html>

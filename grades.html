@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>성적 자료 — 우리 반 관리 콘솔</title>
+  <meta name="description" content="성적 입력·분석 (이 컴퓨터에만 저장)" />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%88%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><b class="js-class">우리 반</b> <span>관리 콘솔</span></a>
+      <nav class="nav-links">
+        <a href="index.html">대시보드</a>
+        <a href="counsel.html">학생·상담</a>
+        <a href="grades.html" class="active">성적</a>
+        <a href="manage.html">학급 도구</a>
+        <a href="guide.html">학급 안내</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container manage-container">
+    <div class="page-head">
+      <h1>성적 자료</h1>
+      <p>시험별 점수 입력과 평균·석차·추이 분석 — 이 컴퓨터에만 저장됩니다.</p>
+    </div>
+    <!-- 시험 선택 -->
+    <section class="card">
+      <h2 class="card-title">🗃️ 시험 선택</h2>
+      <div class="row exam-controls">
+        <select id="examSel" style="min-width:180px"></select>
+        <input type="text" id="newExamName" list="examNames" maxlength="30" placeholder="새 시험 이름 (1회고사·2회고사·수행평가·학기말)" style="flex:1;padding:12px 14px;border:1.5px solid var(--border);border-radius:14px;font:inherit;background:#fffafd" />
+        <datalist id="examNames">
+          <option value="1회고사"></option>
+          <option value="2회고사"></option>
+          <option value="수행평가"></option>
+          <option value="학기말"></option>
+        </datalist>
+        <button class="btn" id="addExam">시험 추가 ➕</button>
+        <button class="btn btn-danger" id="delExam">삭제 🗑️</button>
+      </div>
+      <div class="row" style="margin-top:12px;flex-wrap:wrap">
+        <input type="file" id="xlsxGrades" accept=".xlsx,.xlsm,.csv" multiple hidden />
+        <button class="btn btn-ghost" id="importGrades">📥 엑셀·CSV 성적 불러오기</button>
+        <span class="note" id="importStatus" style="margin:0">나이스 ‘개인별 일람표’ 엑셀(전체 학생 한 파일) 또는 학생별 CSV — 1·2회고사·수행평가·학기말로 자동 분류돼요</span>
+      </div>
+      <p class="note" id="rosterHint" style="margin:10px 0 0"></p>
+    </section>
+
+    <div class="manage-grid">
+      <!-- 점수 입력 -->
+      <section class="card">
+        <h2 class="card-title">✏️ 점수 입력</h2>
+        <p class="help">0~100점으로 입력하세요. 빈칸은 미응시로 계산에서 제외돼요.</p>
+        <div class="table-wrap">
+          <table class="stats-table score-table" id="scoreTable"></table>
+        </div>
+        <button class="btn btn-block" id="saveScores" style="margin-top:12px">점수 저장 💾</button>
+        <p class="save-status" id="scoreStatus"></p>
+      </section>
+
+      <!-- 과목별 분석 -->
+      <section class="card">
+        <h2 class="card-title">📊 과목별 분석</h2>
+        <div id="subjectStats"></div>
+        <p class="empty-hint" id="subjectEmpty">점수를 입력하면 분석이 표시돼요.</p>
+      </section>
+
+      <!-- 학생별 석차 -->
+      <section class="card">
+        <h2 class="card-title">🏅 학생별 총점·석차</h2>
+        <div class="table-wrap">
+          <table class="stats-table" id="rankTable"></table>
+        </div>
+        <p class="empty-hint" id="rankEmpty">점수를 입력하면 석차가 표시돼요.</p>
+      </section>
+
+      <!-- 학생 개인 분석 -->
+      <section class="card">
+        <h2 class="card-title">🔍 학생 개인 분석</h2>
+        <div class="row" style="margin-bottom:14px">
+          <label class="inline-label" for="studentSel">학생 선택</label>
+          <select id="studentSel"></select>
+        </div>
+        <div id="studentDetail"></div>
+        <p class="empty-hint" id="studentEmpty">학생을 선택하면 반 평균과 비교해줘요.</p>
+      </section>
+    </div>
+
+    <footer class="foot"><span>성적 자료는 이 컴퓨터의 브라우저에만 저장돼요 🔒 · <span class="js-class">우리 반</span> 관리 콘솔</span></footer>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const KEY = 'grades-data';
+    const DEFAULT_SUBJECTS = ['국어', '수학', '영어', '과학', '사회'];
+    const subjectsOf = (exam) => (exam.subjects && exam.subjects.length ? exam.subjects : DEFAULT_SUBJECTS);
+    const load = (k, fb) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch { return fb; } };
+    const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const r1 = (n) => Math.round(n * 10) / 10;
+
+    let roster = load('manage-roster', []);
+    let db = load(KEY, { exams: [] });
+    if (!db.exams.length) db.exams.push({ id: 1, name: '1회고사', scores: {} });
+    let curId = db.exams[db.exams.length - 1].id;
+
+    // 학교 시험 체계 순서: 1회고사 → 2회고사 → 수행평가 → 학기말 (그 외는 뒤에 등록순)
+    const EXAM_PATTERNS = [/1\s*회\s*고사/, /2\s*회\s*고사/, /수행\s*평가/, /학기\s*말/];
+    const examOrder = (name) => { const i = EXAM_PATTERNS.findIndex((re) => re.test(String(name))); return i < 0 ? 99 : i; };
+    const sortExams = () => { db.exams.sort((a, b) => examOrder(a.name) - examOrder(b.name) || a.id - b.id); };
+    sortExams();
+
+    const cur = () => db.exams.find((e) => e.id === curId) || db.exams[0];
+
+    $('rosterHint').textContent = roster.length
+      ? `학생 명단 ${roster.length}명 — 명단은 ‘학급 도구’ 페이지에서 관리해요.`
+      : '⚠ 학생 명단이 비어 있어요. 먼저 [학급 도구] 페이지에서 명단을 저장해 주세요.';
+
+    // ── 시험 선택 ──
+    function renderExamSel() {
+      $('examSel').innerHTML = db.exams.map((e) => `<option value="${e.id}"${e.id === curId ? ' selected' : ''}>${esc(e.name)}</option>`).join('');
+    }
+    $('examSel').addEventListener('change', () => { curId = Number($('examSel').value); renderAll(); });
+    $('addExam').addEventListener('click', () => {
+      const name = $('newExamName').value.trim();
+      if (!name) { alert('시험 이름을 입력해 주세요.'); return; }
+      const id = Math.max(0, ...db.exams.map((e) => e.id)) + 1;
+      db.exams.push({ id, name, scores: {} });
+      curId = id;
+      $('newExamName').value = '';
+      sortExams();
+      save(KEY, db);
+      renderAll();
+    });
+    $('delExam').addEventListener('click', () => {
+      if (db.exams.length <= 1) { alert('시험이 최소 1개는 있어야 해요.'); return; }
+      if (!confirm(`‘${cur().name}’ 시험과 점수를 모두 삭제할까요?`)) return;
+      db.exams = db.exams.filter((e) => e.id !== curId);
+      curId = db.exams[db.exams.length - 1].id;
+      save(KEY, db);
+      renderAll();
+    });
+
+    // ── 점수 입력 표 ──
+    function renderInput() {
+      const exam = cur();
+      const SUBJECTS = subjectsOf(exam);
+      const names = [...new Set([...roster, ...Object.keys(exam.scores)])];
+      let html = '<thead><tr><th>이름</th>' + SUBJECTS.map((s) => `<th>${esc(s)}</th>`).join('') + '</tr></thead><tbody>';
+      html += names.map((name) => {
+        const row = exam.scores[name] || {};
+        return `<tr><td class="c-name">${esc(name)}</td>` + SUBJECTS.map((s) =>
+          `<td><input type="number" class="score-in" min="0" max="100" data-name="${esc(name)}" data-sub="${esc(s)}" value="${row[s] ?? ''}" /></td>`
+        ).join('') + '</tr>';
+      }).join('');
+      $('scoreTable').innerHTML = html + '</tbody>';
+    }
+    $('saveScores').addEventListener('click', () => {
+      const exam = cur();
+      exam.scores = {};
+      document.querySelectorAll('.score-in').forEach((inp) => {
+        const v = inp.value.trim();
+        if (v === '') return;
+        const n = Math.max(0, Math.min(100, Number(v)));
+        const name = inp.getAttribute('data-name'), sub = inp.getAttribute('data-sub');
+        (exam.scores[name] = exam.scores[name] || {})[sub] = n;
+      });
+      save(KEY, db);
+      $('scoreStatus').textContent = '✓ 점수를 저장했어요!';
+      setTimeout(() => { $('scoreStatus').textContent = ''; }, 3000);
+      renderAnalysis();
+    });
+
+    // ── 분석 ──
+    const subjectValues = (exam, sub) => Object.values(exam.scores).map((r) => r[sub]).filter((v) => typeof v === 'number');
+    const studentAvg = (row) => {
+      const vals = Object.values(row).filter((v) => typeof v === 'number');
+      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    };
+
+    function renderAnalysis() {
+      const exam = cur();
+      const hasData = Object.keys(exam.scores).length > 0;
+
+      // 과목별 평균·최고·최저
+      $('subjectEmpty').classList.toggle('hidden', hasData);
+      $('subjectStats').innerHTML = !hasData ? '' : subjectsOf(exam).map((s) => {
+        const vals = subjectValues(exam, s);
+        if (!vals.length) return '';
+        // CSV에서 가져온 실제 반 평균이 있으면 우선 사용
+        const avg = (exam.avg && isFinite(exam.avg[s])) ? exam.avg[s] : vals.reduce((a, b) => a + b, 0) / vals.length;
+        return `<div class="bar-row"><span class="bar-label">${esc(s)}</span><span class="bar-track"><span class="bar-fill" style="width:${Math.round(avg)}%"></span></span><span class="bar-val">${r1(avg)}점</span><span class="bar-mm">최고 ${Math.max(...vals)} · 최저 ${Math.min(...vals)}</span></div>`;
+      }).join('');
+
+      // 학생별 총점·석차
+      const rows = Object.entries(exam.scores).map(([name, row]) => {
+        const vals = Object.values(row).filter((v) => typeof v === 'number');
+        return { name, total: vals.reduce((a, b) => a + b, 0), count: vals.length, avg: studentAvg(row) };
+      }).filter((r) => r.count > 0).sort((a, b) => b.total - a.total);
+      rows.forEach((r, i) => { r.rank = i > 0 && rows[i - 1].total === r.total ? rows[i - 1].rank : i + 1; });
+      $('rankEmpty').classList.toggle('hidden', rows.length > 0);
+      $('rankTable').innerHTML = !rows.length ? '' :
+        '<thead><tr><th>석차</th><th>이름</th><th>총점</th><th>평균</th></tr></thead><tbody>' +
+        rows.map((r) => `<tr><td class="c-num">${r.rank}등</td><td class="c-name">${esc(r.name)}</td><td class="c-total">${r.total}</td><td>${r1(r.avg)}</td></tr>`).join('') +
+        '</tbody>';
+
+      renderStudent();
+    }
+
+    // ── 학생 개인 분석 ──
+    function renderStudentSel() {
+      const names = [...new Set([...roster, ...db.exams.flatMap((e) => Object.keys(e.scores))])];
+      $('studentSel').innerHTML = '<option value="">선택하세요</option>' + names.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    }
+    function renderStudent() {
+      const name = $('studentSel').value;
+      const exam = cur();
+      if (!name) { $('studentDetail').innerHTML = ''; $('studentEmpty').classList.remove('hidden'); return; }
+      $('studentEmpty').classList.add('hidden');
+      const row = exam.scores[name] || {};
+      let html = `<p class="sub-h">${esc(cur().name)} — ${esc(name)} vs 반 평균</p>`;
+      let any = false;
+      subjectsOf(exam).forEach((s) => {
+        if (typeof row[s] !== 'number') return;
+        any = true;
+        const vals = subjectValues(exam, s);
+        const avg = (exam.avg && isFinite(exam.avg[s])) ? exam.avg[s] : vals.reduce((a, b) => a + b, 0) / vals.length;
+        const diff = row[s] - avg;
+        html += `<div class="bar-pair"><div class="bar-row"><span class="bar-label">${s}</span><span class="bar-track"><span class="bar-fill" style="width:${row[s]}%"></span></span><span class="bar-val">${row[s]}점</span><span class="bar-mm ${diff >= 0 ? 'diff-up' : 'diff-down'}">${diff >= 0 ? '▲' : '▼'} ${r1(Math.abs(diff))}</span></div><div class="bar-row bar-sub"><span class="bar-label">반평균</span><span class="bar-track"><span class="bar-fill alt" style="width:${Math.round(avg)}%"></span></span><span class="bar-val">${r1(avg)}점</span><span class="bar-mm"></span></div></div>`;
+      });
+      if (!any) html += '<p class="empty-hint">이 시험에 입력된 점수가 없어요.</p>';
+
+      // 시험별 추이
+      const trend = db.exams.map((e) => {
+        const a = e.scores[name] ? studentAvg(e.scores[name]) : null;
+        const classAvgs = Object.values(e.scores).map(studentAvg).filter((v) => v !== null);
+        const c = classAvgs.length ? classAvgs.reduce((x, y) => x + y, 0) / classAvgs.length : null;
+        return { name: e.name, mine: a, cls: c };
+      }).filter((t) => t.mine !== null);
+      if (trend.length > 1) {
+        html += '<p class="sub-h" style="margin-top:16px">시험별 평균 추이 (나 vs 반)</p>';
+        trend.forEach((tr) => {
+          html += `<div class="bar-pair"><div class="bar-row"><span class="bar-label bar-label-w">${esc(tr.name)}</span><span class="bar-track"><span class="bar-fill" style="width:${Math.round(tr.mine)}%"></span></span><span class="bar-val">${r1(tr.mine)}</span><span class="bar-mm"></span></div><div class="bar-row bar-sub"><span class="bar-label bar-label-w">반평균</span><span class="bar-track"><span class="bar-fill alt" style="width:${Math.round(tr.cls)}%"></span></span><span class="bar-val">${r1(tr.cls)}</span><span class="bar-mm"></span></div></div>`;
+        });
+      }
+      $('studentDetail').innerHTML = html;
+    }
+    $('studentSel').addEventListener('change', renderStudent);
+
+    // ── 엑셀 성적 불러오기 ──
+    // 시트마다 '이름(성명)' 헤더가 있는 표를 찾아 시험 1개로 가져온다.
+    // 파일은 브라우저 안에서만 읽히고 외부로 전송되지 않는다.
+    $('importGrades').addEventListener('click', () => {
+      if (typeof XLSX === 'undefined') { alert('엑셀 파서를 아직 불러오는 중이에요. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.'); return; }
+      $('xlsxGrades').click();
+    });
+    $('xlsxGrades').addEventListener('change', async (e) => {
+      const files = [...e.target.files];
+      if (!files.length) return;
+      let csvStudents = 0; const csvExams = new Set(); let wbMsg = '';
+      try {
+        for (const file of files) {
+          if (/\.csv$/i.test(file.name)) {
+            const r = importStudentCsv(decodeText(await file.arrayBuffer()));
+            csvStudents += r.students;
+            r.exams.forEach((x) => csvExams.add(x));
+          } else {
+            const wb = XLSX.read(await file.arrayBuffer());
+            if (wb.SheetNames.filter((n) => /^\d+\.\s/.test(n)).length >= 3) {
+              alert('이 파일은 상담카드 형식이에요.\n[학생·상담] 페이지의 엑셀 불러오기를 사용해 주세요.');
+              continue;
+            }
+            // 나이스 '개인별 일람표' 엑셀: 학생 블록("… 3반 1번 이름")이 이어진 형식
+            let neis = 0;
+            for (const sn of wb.SheetNames) {
+              const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '' });
+              const isNeis = rows.slice(0, 60).some((row) => {
+                const j = row.join(' ');
+                return /학년도|학기/.test(j) && /\d+\s*번\s+[가-힣]/.test(j);
+              });
+              if (!isNeis) continue;
+              const r = importStudentRows(rows);
+              neis += r.students;
+              r.exams.forEach((x) => csvExams.add(x));
+            }
+            if (neis) { csvStudents += neis; continue; }
+            const res = importGradeWorkbook(wb, file.name.replace(/\.[^.]+$/, ''));
+            if (res.exams) wbMsg = `시험 ${res.exams}개 · 학생 ${res.students}명(엑셀)`;
+          }
+        }
+        if (csvStudents || wbMsg) {
+          if (db.exams.length > 1) db.exams = db.exams.filter((x) => Object.keys(x.scores).length || x.id === curId);
+          sortExams();
+          save(KEY, db);
+          const parts = [];
+          if (csvStudents) parts.push(`학생 ${csvStudents}명 → ${[...csvExams].join('·')}`);
+          if (wbMsg) parts.push(wbMsg);
+          $('importStatus').textContent = '✓ ' + parts.join(' · ') + ' 반영했어요';
+          if (roster.length) $('rosterHint').textContent = `학생 명단 ${roster.length}명`;
+          renderAll();
+        } else {
+          alert('성적 표를 찾지 못했어요.\n· 학생별 CSV: 첫 줄에 “N반 N번 이름”, 이어서 과목/구분/점수 표\n· 엑셀: “이름” 헤더가 있는 표');
+        }
+      } catch (err) {
+        alert('파일을 읽지 못했어요: ' + err.message);
+      }
+      e.target.value = '';
+    });
+
+    // ── 학생별 성적 CSV (나이스 출력 형식) ──
+    // 헤더 줄("… 3반 1번 이름") 뒤에 과목/구분/고사·영역명/점수/만점·반영비율/원점수·과목평균 표.
+    // 1·2회고사는 그대로, 수행평가는 반영비율 가중평균, 원점수/과목평균은 학기말 점수·반평균으로 저장.
+    function decodeText(buf) {
+      const u8 = new Uint8Array(buf);
+      let t = new TextDecoder('utf-8').decode(u8);
+      if (t.includes('�')) { try { t = new TextDecoder('euc-kr').decode(u8); } catch {} }
+      return t;
+    }
+    function splitLine(line, d) {
+      const out = []; let cur = '', q = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (q) { if (ch === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+        else if (ch === '"') q = true;
+        else if (ch === d) { out.push(cur); cur = ''; }
+        else cur += ch;
+      }
+      out.push(cur);
+      return out;
+    }
+    function importStudentCsv(text) {
+      const delim = text.includes('\t') ? '\t' : ',';
+      return importStudentRows(text.split(/\r?\n/).map((l) => splitLine(l, delim)));
+    }
+    // rows: 2차원 배열 — CSV 줄 분할 결과 또는 엑셀 시트(sheet_to_json header:1)
+    function importStudentRows(rows) {
+      const res = { students: 0, exams: new Set() };
+      let student = null, cols = null, curSubject = '', agg = null;
+
+      const flush = () => {
+        if (!student || !agg) return;
+        const perf = {};
+        Object.entries(agg.perf).forEach(([sub, list]) => {
+          const tw = list.reduce((a, b) => a + b.w, 0);
+          if (tw > 0) perf[sub] = Math.round(list.reduce((a, b) => a + b.v * b.w, 0) / tw * 10) / 10;
+        });
+        const setExam = (name, data, avg) => {
+          if (!Object.keys(data).length) return;
+          let ex = db.exams.find((x) => x.name === name);
+          if (!ex) { ex = { id: Math.max(0, ...db.exams.map((x) => x.id)) + 1, name, subjects: [], scores: {} }; db.exams.push(ex); }
+          if (!ex.subjects) ex.subjects = [];
+          ex.scores[student.name] = data;
+          agg.order.forEach((sub) => { if (data[sub] !== undefined && !ex.subjects.includes(sub)) ex.subjects.push(sub); });
+          if (avg && Object.keys(avg).length) ex.avg = Object.assign(ex.avg || {}, avg);
+          curId = ex.id;
+          res.exams.add(name);
+        };
+        setExam('1회고사', agg.r1);
+        setExam('2회고사', agg.r2);
+        setExam('수행평가', perf);
+        setExam('학기말', agg.fin, agg.avg);
+        if (!roster.includes(student.name)) { roster.push(student.name); save('manage-roster', roster); }
+        res.students++;
+        student = null; agg = null; cols = null; curSubject = '';
+      };
+
+      for (const row of rows) {
+        const joined = row.join(' ').replace(/\s+/g, ' ').trim();
+        const sm = joined.match(/(\d+)\s*번\s+([가-힣a-zA-Z]{2,10})/);
+        if (sm && /학년도|학기/.test(joined)) {
+          flush();
+          student = { no: Number(sm[1]), name: sm[2] };
+          agg = { r1: {}, r2: {}, perf: {}, fin: {}, avg: {}, order: [] };
+          continue;
+        }
+        if (!student) continue;
+        if (!cols) {
+          const ci = row.findIndex((v) => String(v).trim() === '과목');
+          if (ci >= 0) {
+            cols = { sub: ci, area: -1, score: -1, ratio: -1, orig: -1 };
+            row.forEach((v, i) => {
+              const h = String(v).trim();
+              if (/고사|영역명/.test(h)) cols.area = i;
+              else if (h === '점수') cols.score = i;
+              else if (/만점|비율/.test(h)) cols.ratio = i;
+              else if (/원점수/.test(h)) cols.orig = i;
+            });
+          }
+          continue;
+        }
+        const sub = String(row[cols.sub] ?? '').trim();
+        if (sub) { curSubject = sub; if (!agg.order.includes(sub)) agg.order.push(sub); }
+        if (!curSubject) continue;
+        const area = String(row[cols.area] ?? '').trim();
+        const rawScore = String(row[cols.score] ?? '').trim();
+        if (area && rawScore !== '') {
+          let v = Number(rawScore.replace(/[^\d.]/g, ''));
+          if (isFinite(v)) {
+            let w = 0, max = 100;
+            const rm = String(row[cols.ratio] ?? '').match(/([\d.]+)\s*\/\s*([\d.]+)\s*%/);
+            if (rm) { max = Number(rm[1]) || 100; w = Number(rm[2]) || 0; }
+            v = Math.round((max > 0 ? v / max * 100 : v) * 10) / 10;
+            if (/1\s*회\s*고사/.test(area)) agg.r1[curSubject] = v;
+            else if (/2\s*회\s*고사/.test(area)) agg.r2[curSubject] = v;
+            else agg.perf[curSubject] = (agg.perf[curSubject] || []).concat({ v, w: w || 1 });
+          }
+        }
+        const om = String(row[cols.orig] ?? '').match(/([\d.]+)\s*\/\s*([\d.]+)/);
+        if (om) { agg.fin[curSubject] = Number(om[1]); agg.avg[curSubject] = Number(om[2]); }
+      }
+      flush();
+      return res;
+    }
+
+    function importGradeWorkbook(wb, fallbackName) {
+      const NAME_HEADS = ['이름', '성명'];
+      const SKIP = ['번호', '학번', '반', '학년', '성별', '합계', '총점', '평균', '석차', '등수', '비고', '이름', '성명', 'no', 'no.'];
+      const res = { exams: 0, students: 0, replaced: 0 };
+      const importedOrder = [];
+
+      wb.SheetNames.forEach((sn) => {
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '' });
+        let hIdx = -1, nameCol = -1;
+        for (let r = 0; r < Math.min(rows.length, 10); r++) {
+          const c = (rows[r] || []).findIndex((v) => NAME_HEADS.includes(String(v).trim()));
+          if (c >= 0) { hIdx = r; nameCol = c; break; }
+        }
+        if (hIdx < 0) return;
+        const header = (rows[hIdx] || []).map((v) => String(v).trim());
+        const numCol = header.findIndex((v) => ['번호', '학번'].includes(v));
+        const subCols = [];
+        header.forEach((h, c) => {
+          if (c === nameCol || !h) return;
+          if (SKIP.includes(h.replace(/\s/g, '').toLowerCase())) return;
+          subCols.push({ c, sub: h });
+        });
+        if (!subCols.length) return;
+
+        const scores = {};
+        for (let r = hIdx + 1; r < rows.length; r++) {
+          const name = String((rows[r] || [])[nameCol] ?? '').trim();
+          if (!name || NAME_HEADS.includes(name) || /^(합계|평균|계)$/.test(name)) continue;
+          const row = {};
+          subCols.forEach(({ c, sub }) => {
+            const raw = String((rows[r] || [])[c] ?? '').trim();
+            if (raw === '') return;
+            const v = Number(raw.replace(/점$/, ''));
+            if (isFinite(v)) row[sub] = Math.max(0, Math.min(100, v));
+          });
+          if (!Object.keys(row).length) continue;
+          scores[name] = row;
+          importedOrder.push({ name, no: numCol >= 0 ? Number((rows[r] || [])[numCol]) || 999 : importedOrder.length });
+        }
+        if (!Object.keys(scores).length) return;
+
+        const subjects = subCols.map((s) => s.sub).filter((sub) => Object.values(scores).some((row) => typeof row[sub] === 'number'));
+        const examName = (wb.SheetNames.length > 1 || !/^sheet\s*\d*$/i.test(sn)) ? sn : (fallbackName || sn);
+        const existing = db.exams.find((x) => x.name === examName);
+        if (existing) { existing.scores = scores; existing.subjects = subjects; curId = existing.id; res.replaced++; }
+        else {
+          const id = Math.max(0, ...db.exams.map((x) => x.id)) + 1;
+          db.exams.push({ id, name: examName, subjects, scores });
+          curId = id;
+        }
+        res.exams++;
+        res.students = Math.max(res.students, Object.keys(scores).length);
+      });
+
+      if (res.exams) {
+        // 점수가 하나도 없는 (초기 생성된) 빈 시험 정리
+        if (db.exams.length > 1) db.exams = db.exams.filter((x) => Object.keys(x.scores).length || x.id === curId);
+        sortExams();
+        // 명단이 비어 있으면 가져온 학생을 번호순으로 명단에 등록
+        if (!roster.length && importedOrder.length) {
+          roster = [...new Set(importedOrder.sort((a, b) => a.no - b.no).map((o) => o.name))];
+          save('manage-roster', roster);
+          $('rosterHint').textContent = `학생 명단 ${roster.length}명 — 엑셀에서 자동 등록했어요.`;
+        }
+      }
+      return res;
+    }
+
+    function renderAll() { renderExamSel(); renderInput(); renderStudentSel(); renderAnalysis(); }
+    renderAll();
+  </script>
+  <script src="console.js"></script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>학급 안내 — 우리 반 관리 콘솔</title>
+  <meta name="description" content="급훈·학급 규칙·시간표 편집과 인쇄" />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%8B%3C/text%3E%3C/svg%3E" />
+  <style>
+    /* 이 페이지 전용: 클릭해서 바로 고치는 편집 영역 */
+    [data-edit] { outline: none; border-radius: 6px; white-space: pre-wrap; }
+    [data-edit]:hover { background: var(--accent-soft); }
+    [data-edit]:focus { background: #fff; box-shadow: 0 0 0 2px var(--accent); }
+    .tt-table td[contenteditable] { min-width: 64px; }
+    .tt-table td.tt-period { background: #f8fafc; font-weight: 700; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><b class="js-class">우리 반</b> <span>관리 콘솔</span></a>
+      <nav class="nav-links">
+        <a href="index.html">대시보드</a>
+        <a href="counsel.html">학생·상담</a>
+        <a href="grades.html">성적</a>
+        <a href="manage.html">학급 도구</a>
+        <a href="guide.html" class="active">학급 안내</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="page-head">
+      <h1>학급 안내</h1>
+      <p>급훈·운영 방향·학급 규칙·시간표 — 내용을 클릭하면 바로 수정되고 자동 저장됩니다. 인쇄(Ctrl+P)하면 교실 게시·가정통신용으로 쓸 수 있어요.</p>
+    </div>
+
+    <div class="manage-grid">
+      <!-- 급훈 -->
+      <section class="card span-2">
+        <h2 class="card-title">🌿 급훈 · 학급 운영 철학</h2>
+        <p style="font-size:1.15rem;font-weight:800;margin:0 0 8px" data-edit contenteditable="true" data-key="motto">배려와 존중</p>
+        <p style="margin:0;font-size:.92rem;color:#334155" data-edit contenteditable="true" data-key="philosophy">다양한 가치관과 개성을 가진 학생들이 서로를 이해하고 존중하는 태도를 바탕으로, 배려를 실천하는 공동체 문화를 형성하여 모두가 함께 성장하는 학급을 만들고자 합니다.</p>
+      </section>
+
+      <!-- 운영 방향 -->
+      <section class="card">
+        <h2 class="card-title">📘 학급 중점 프로그램</h2>
+        <div style="font-size:.9rem;color:#334155" data-edit contenteditable="true" data-key="dir1">• 1인 1역 책임제 — 학급 내 역할 분담 후 꾸준히 실천
+• 학급 자치회의 — 정기 회의로 스스로 문제 해결
+• 진로·진학 탐색 활동 — 다양한 진로 프로그램 참여</div>
+      </section>
+      <section class="card">
+        <h2 class="card-title">📗 학력 제고</h2>
+        <div style="font-size:.9rem;color:#334155" data-edit contenteditable="true" data-key="dir2">• 스스로 공부하는 습관을 기를 수 있도록 면학 분위기 만들기
+• 매일 플래너를 활용하여 계획적인 생활 습관 형성
+• 평가 결과를 분석하여 개인별 맞춤 지도</div>
+      </section>
+      <section class="card">
+        <h2 class="card-title">🤝 인성 및 생활지도</h2>
+        <div style="font-size:.9rem;color:#334155" data-edit contenteditable="true" data-key="dir3">• 먼저 밝게 인사하는 생활 예절 실천
+• 자신의 물건을 스스로 관리하는 자기 관리 습관
+• 나눔과 배려를 실천하며 더불어 살아가는 태도 키우기</div>
+      </section>
+      <section class="card">
+        <h2 class="card-title">🌱 기대 효과</h2>
+        <div style="font-size:.9rem;color:#334155" data-edit contenteditable="true" data-key="dir4">• 배려하고 존중하는 학급 문화 형성
+• 자기주도적 학습 습관과 바른 생활 태도 정착
+• 학업 능력과 인성이 균형 있게 발달</div>
+      </section>
+
+      <!-- 학급 규칙 -->
+      <section class="card span-2">
+        <h2 class="card-title">📏 학급 규칙 &amp; 약속</h2>
+        <div class="table-wrap">
+          <table class="stats-table">
+            <thead><tr><th style="width:130px">영역</th><th>규칙 내용</th><th style="width:80px">기준</th></tr></thead>
+            <tbody>
+              <tr><td>⏰ 시간 약속</td><td style="text-align:left;white-space:normal" data-edit contenteditable="true" data-key="rule1">정해진 시간 전에 착석 완료 / 결석·조퇴는 사전에 학부모 연락 + 담임 보고</td><td data-edit contenteditable="true" data-key="rule1b">필수</td></tr>
+              <tr><td>📱 휴대폰</td><td style="text-align:left;white-space:normal" data-edit contenteditable="true" data-key="rule2">등교 즉시 수거함에 보관 / 필요시 담임에게 문의</td><td data-edit contenteditable="true" data-key="rule2b">금지</td></tr>
+              <tr><td>🗣️ 언어·태도</td><td style="text-align:left;white-space:normal" data-edit contenteditable="true" data-key="rule3">욕설·비하 표현 사용 금지 / 발언 시 손 들기, 경청 자세 유지</td><td data-edit contenteditable="true" data-key="rule3b">금지</td></tr>
+              <tr><td>🧹 청소·당번</td><td style="text-align:left;white-space:normal" data-edit contenteditable="true" data-key="rule4">주간 당번표 기준으로 청소 구역 담당 / 방과 후 10분 청소 실시</td><td data-edit contenteditable="true" data-key="rule4b">필수</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 상담 안내 -->
+      <section class="card span-2">
+        <h2 class="card-title">📞 담임 연락처 &amp; 상담 안내</h2>
+        <div style="font-size:.9rem;color:#334155" data-edit contenteditable="true" data-key="counsel">담임 ○○○ 선생님 · 부담임 ○○○ 선생님
+이메일: teacher@school.kr / 연락 가능: 평일 08:00–17:00
+• 수시 상담: 쉬는 시간·점심 시간·방과 후 언제든 가능. 말하기 어려우면 쪽지·문자 OK. 비밀 보장.
+• 정기 상담: 3월 · 9월 중 전원 대상
+• 상담 절차: 연락·메모 → 일정 조율 → 대면 상담</div>
+      </section>
+
+      <!-- 시간표 -->
+      <section class="card span-2">
+        <h2 class="card-title">🗓️ 주간 시간표 <span class="tag">칸을 클릭해 과목·선생님 입력</span></h2>
+        <div class="table-wrap">
+          <table class="stats-table tt-table" id="timetable">
+            <thead><tr><th style="width:120px">교시</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <p class="note">교시 이름(시각 포함)도 클릭해서 수정할 수 있어요.</p>
+      </section>
+    </div>
+
+    <footer class="foot"><span><span class="js-class">우리 반</span> 관리 콘솔 · 내용은 이 컴퓨터에만 저장됩니다</span></footer>
+  </main>
+
+  <script>
+    (function () {
+      const TEXT_KEY = 'guide-texts', TT_KEY = 'guide-timetable';
+      const load = (k, fb) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch { return fb; } };
+      const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+      // ── 편집 가능 텍스트 ──
+      const texts = load(TEXT_KEY, {});
+      document.querySelectorAll('[data-key]').forEach((el) => {
+        const key = el.dataset.key;
+        if (texts[key] !== undefined) el.innerText = texts[key];
+        el.addEventListener('blur', () => {
+          texts[key] = el.innerText;
+          save(TEXT_KEY, texts);
+        });
+      });
+
+      // ── 시간표 ──
+      const DEFAULT_PERIODS = [
+        '1교시 (08:50)', '2교시 (09:45)', '3교시 (10:40)', '4교시 (11:35)',
+        '점심 🍱', '5교시 (13:20)', '6교시 (14:15)', '7교시 (15:10)'
+      ];
+      const tt = load(TT_KEY, { periods: DEFAULT_PERIODS.slice(), cells: {} });
+      const tbody = document.querySelector('#timetable tbody');
+      tt.periods.forEach((period, r) => {
+        const tr = document.createElement('tr');
+        const th = document.createElement('td');
+        th.className = 'tt-period';
+        th.contentEditable = 'true';
+        th.innerText = period;
+        th.addEventListener('blur', () => { tt.periods[r] = th.innerText; save(TT_KEY, tt); });
+        tr.appendChild(th);
+        for (let c = 0; c < 5; c++) {
+          const cellKey = r + '-' + c;
+          const td = document.createElement('td');
+          td.contentEditable = 'true';
+          td.innerText = tt.cells[cellKey] || '';
+          td.addEventListener('blur', () => { tt.cells[cellKey] = td.innerText; save(TT_KEY, tt); });
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      });
+    })();
+  </script>
+  <script src="console.js"></script>
+</body>
+</html>
