@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>학급 도구 — 우리 반 관리 콘솔</title>
+  <meta name="description" content="학급 도구: 학생 명단, 발표자 뽑기, 모둠 편성, 자리 배치, 청소 당번" />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%AB%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><b class="js-class">우리 반</b> <span>관리 콘솔</span></a>
+      <nav class="nav-links">
+        <a href="index.html">대시보드</a>
+        <a href="counsel.html">학생·상담</a>
+        <a href="grades.html">성적</a>
+        <a href="manage.html" class="active">학급 도구</a>
+        <a href="guide.html">학급 안내</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container manage-container">
+    <div class="page-head">
+      <h1>학급 도구</h1>
+      <p>명단 관리 · 발표자 뽑기 · 모둠 편성 · 자리 배치 · 청소 당번</p>
+    </div>
+    <div class="manage-grid">
+      <!-- 학생 명단 -->
+      <section class="card">
+        <h2 class="card-title">👧👦 학생 명단</h2>
+        <p class="help">이름을 쉼표(,)나 줄바꿈으로 구분해서 입력하세요. 이 컴퓨터에만 저장돼요.</p>
+        <textarea id="roster" rows="4" placeholder="예: 김하늘, 이도윤, 박서연&#10;최지우"></textarea>
+        <div class="row">
+          <button class="btn btn-block" id="saveRoster">명단 저장 💾</button>
+        </div>
+        <p class="save-status" id="rosterStatus"></p>
+        <div class="chip-list" id="rosterChips"></div>
+        <p class="empty-hint" id="rosterEmpty">아직 등록된 학생이 없어요.</p>
+      </section>
+
+      <!-- 발표자 뽑기 -->
+      <section class="card pick-card">
+        <h2 class="card-title">🎲 발표자 뽑기</h2>
+        <div class="pick-box" id="pickBox">누가 될까요? 👀</div>
+        <div class="row">
+          <button class="btn btn-block btn-pick" id="pickBtn">랜덤으로 뽑기 ✨</button>
+        </div>
+        <label class="check-label"><input type="checkbox" id="noRepeat" checked /> 한 번 뽑힌 사람은 제외 (전원 뽑히면 초기화)</label>
+        <p class="note" id="pickLeft"></p>
+      </section>
+
+      <!-- 모둠 편성 -->
+      <section class="card">
+        <h2 class="card-title">👥 모둠 편성</h2>
+        <div class="row" style="margin-bottom:12px">
+          <label class="inline-label" for="groupSize">한 모둠 인원</label>
+          <select id="groupSize">
+            <option value="2">2명</option>
+            <option value="3">3명</option>
+            <option value="4" selected>4명</option>
+            <option value="5">5명</option>
+            <option value="6">6명</option>
+          </select>
+          <button class="btn" id="groupBtn">모둠 짜기 🔀</button>
+        </div>
+        <div class="team-grid" id="groupResult"></div>
+      </section>
+
+      <!-- 청소 당번 -->
+      <section class="card">
+        <h2 class="card-title">🧹 청소 당번 배정</h2>
+        <p class="help">구역을 쉼표(,)나 줄바꿈으로 구분해서 입력하면 학생을 골고루 나눠줘요.</p>
+        <textarea id="areas" rows="2" placeholder="예: 교실 바닥, 복도, 창문, 칠판·정리"></textarea>
+        <div class="row">
+          <button class="btn btn-block" id="dutyBtn">당번 뽑기 🎯</button>
+        </div>
+        <div id="dutyResult"></div>
+      </section>
+
+      <!-- 자리 배치 -->
+      <section class="card span-2" id="seatCard">
+        <h2 class="card-title">🪑 자리 배치</h2>
+        <div class="row seat-controls" style="margin-bottom:12px;flex-wrap:wrap;max-width:none">
+          <label class="inline-label" for="seatMonth">월 선택</label>
+          <input type="month" id="seatMonth" style="width:auto" />
+          <label class="inline-label" for="seatCols">한 줄 자리 수</label>
+          <select id="seatCols">
+            <option value="3">3자리</option>
+            <option value="4">4자리</option>
+            <option value="5">5자리</option>
+            <option value="6" selected>6자리</option>
+          </select>
+          <label class="inline-label" for="seatView">보기</label>
+          <select id="seatView">
+            <option value="student">학생용 (칠판 위)</option>
+            <option value="teacher">교사용 (칠판 아래)</option>
+          </select>
+          <button class="btn" id="seatBtn">이 달 자리 섞기 🔀</button>
+          <button class="btn btn-ghost" id="seatPdf">🖨️ PDF 저장</button>
+          <button class="btn btn-danger" id="seatDel">이 달 삭제</button>
+        </div>
+        <p class="note" style="margin:0 0 10px">달마다 배치가 따로 저장돼요. <b>자리를 눌러 선택한 뒤 다른 자리를 누르면 두 자리가 서로 바뀌어요.</b></p>
+        <p class="note" id="seatSavedInfo" style="margin:0 0 10px"></p>
+        <div id="seatResult"></div>
+      </section>
+    </div>
+
+    <footer class="foot"><span>결과는 이 컴퓨터에만 저장돼요 · <span class="js-class">우리 반</span> 관리 콘솔 💗</span></footer>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const KEY = {
+      roster: 'manage-roster',
+      picked: 'manage-picked',
+      areas: 'manage-areas',
+      groups: 'manage-groups',
+      seats: 'manage-seats',
+      duty: 'manage-duty',
+    };
+    const load = (k, fallback) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fallback; } catch { return fallback; } };
+    const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const parseNames = (text) => [...new Set(text.split(/[,\n]/).map((s) => s.trim()).filter(Boolean))];
+    const shuffle = (arr) => {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+    // 인쇄물 제목에 쓸 학급 이름 (대시보드에서 설정)
+    const className = (() => { try { return localStorage.getItem('console-class-name') || '우리 반'; } catch { return '우리 반'; } })();
+
+    let roster = load(KEY.roster, []);
+    let picked = load(KEY.picked, []);
+
+    // ── 명단 ──
+    function renderRoster() {
+      $('rosterChips').innerHTML = roster.map((n) => `<span class="chip">${esc(n)}</span>`).join('');
+      $('rosterEmpty').classList.toggle('hidden', roster.length > 0);
+      $('pickLeft').textContent = roster.length ? `전체 ${roster.length}명 · 아직 안 뽑힌 사람 ${roster.length - picked.length}명` : '';
+    }
+    $('roster').value = roster.join(', ');
+    $('saveRoster').addEventListener('click', () => {
+      roster = parseNames($('roster').value);
+      picked = picked.filter((n) => roster.includes(n));
+      save(KEY.roster, roster); save(KEY.picked, picked);
+      $('rosterStatus').textContent = `✓ ${roster.length}명 저장했어요!`;
+      setTimeout(() => { $('rosterStatus').textContent = ''; }, 3000);
+      renderRoster();
+    });
+
+    // ── 발표자 뽑기 ──
+    let picking = false;
+    $('pickBtn').addEventListener('click', () => {
+      if (picking) return;
+      if (!roster.length) { alert('먼저 학생 명단을 저장해 주세요.'); return; }
+      let pool = roster;
+      if ($('noRepeat').checked) {
+        if (picked.length >= roster.length) picked = [];
+        pool = roster.filter((n) => !picked.includes(n));
+      }
+      const winner = pool[Math.floor(Math.random() * pool.length)];
+      picking = true;
+      const box = $('pickBox');
+      let ticks = 0;
+      const spin = setInterval(() => {
+        box.textContent = roster[Math.floor(Math.random() * roster.length)];
+        if (++ticks >= 14) {
+          clearInterval(spin);
+          box.textContent = `🎉 ${winner} 🎉`;
+          box.classList.remove('pick-pop'); void box.offsetWidth; box.classList.add('pick-pop');
+          if ($('noRepeat').checked) { picked.push(winner); save(KEY.picked, picked); }
+          renderRoster();
+          picking = false;
+        }
+      }, 70);
+    });
+
+    // ── 모둠 편성 ──
+    function renderGroups(groups) {
+      $('groupResult').innerHTML = groups.map((g, i) =>
+        `<div class="team"><div class="team-name">${i + 1}모둠 <small>(${g.length}명)</small></div><div class="team-members">${g.map((n) => `<span class="chip">${esc(n)}</span>`).join('')}</div></div>`
+      ).join('');
+    }
+    $('groupBtn').addEventListener('click', () => {
+      if (!roster.length) { alert('먼저 학생 명단을 저장해 주세요.'); return; }
+      const size = Number($('groupSize').value);
+      const mixed = shuffle(roster);
+      const count = Math.max(1, Math.round(mixed.length / size));
+      const groups = Array.from({ length: count }, () => []);
+      mixed.forEach((n, i) => groups[i % count].push(n));
+      save(KEY.groups, groups);
+      renderGroups(groups);
+    });
+    const savedGroups = load(KEY.groups, null);
+    if (savedGroups) renderGroups(savedGroups);
+
+    // ── 자리 배치: 월별 저장 ──
+    const ymNow = () => { const t = new Date(); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0'); };
+    const fmtYm = (ym) => { const [y, m] = ym.split('-'); return `${y}년 ${Number(m)}월`; };
+    let seatsAll = load('manage-seats-monthly', null);
+    if (!seatsAll) {
+      seatsAll = {};
+      const legacy = load(KEY.seats, null); // 예전 단일 저장분은 이번 달로 이관
+      if (legacy) seatsAll[ymNow()] = legacy;
+    }
+    $('seatMonth').value = ymNow();
+
+    // 보기 방향: 학생용(칠판 위) / 교사용(칠판 아래 = 180도 회전)
+    let seatView = load('manage-seat-view', 'student');
+    $('seatView').value = seatView;
+    $('seatView').addEventListener('change', () => {
+      seatView = $('seatView').value;
+      save('manage-seat-view', seatView);
+      selIdx = null;
+      renderSeats();
+    });
+
+    let selIdx = null; // 수동 편집: 선택된 자리(원본 인덱스)
+    function renderSeats() {
+      const ym = $('seatMonth').value || ymNow();
+      const months = Object.keys(seatsAll).sort();
+      $('seatSavedInfo').textContent = months.length ? '저장된 달: ' + months.map(fmtYm).join(' · ') : '';
+      const data = seatsAll[ym];
+      if (!data) {
+        $('seatResult').innerHTML = `<p class="empty-hint">${fmtYm(ym)} 자리 배치가 아직 없어요. [이 달 자리 섞기]를 눌러 만들어 주세요.</p>`;
+        return;
+      }
+      const { cols, seats } = data;
+      const teacher = seatView === 'teacher';
+      // 교사용 보기는 교실 앞에서 바라본 모습 → 배열을 180도 회전(역순)
+      const order = seats.map((_, i) => i);
+      const disp = teacher ? order.slice().reverse() : order;
+      const board = `<div class="board-label">🖥️ 교탁 — ${fmtYm(ym)}${teacher ? ' · 교사용 보기' : ''}</div>`;
+      let grid = '<div class="seat-grid" style="grid-template-columns:repeat(' + cols + ',1fr)">';
+      grid += disp.map((oi) => {
+        const n = seats[oi];
+        const cls = 'seat' + (n ? '' : ' seat-empty') + (selIdx === oi ? ' seat-sel' : '');
+        return `<button type="button" class="${cls}" data-oi="${oi}">${n ? esc(n) : ''}</button>`;
+      }).join('') + '</div>';
+      $('seatResult').innerHTML = teacher ? grid + board : board + grid;
+    }
+
+    // 수동 편집: 자리 두 개를 차례로 누르면 서로 교환
+    $('seatResult').addEventListener('click', (e) => {
+      const el = e.target.closest('[data-oi]');
+      if (!el) return;
+      const ym = $('seatMonth').value || ymNow();
+      const data = seatsAll[ym];
+      if (!data) return;
+      const oi = Number(el.dataset.oi);
+      if (selIdx === null) selIdx = oi;
+      else if (selIdx === oi) selIdx = null;
+      else {
+        [data.seats[selIdx], data.seats[oi]] = [data.seats[oi], data.seats[selIdx]];
+        selIdx = null;
+        save('manage-seats-monthly', seatsAll);
+      }
+      renderSeats();
+    });
+
+    // 출력용 PDF 저장 (인쇄 창 → 'PDF로 저장')
+    $('seatPdf').addEventListener('click', () => {
+      const ym = $('seatMonth').value || ymNow();
+      const data = seatsAll[ym];
+      if (!data) { alert('먼저 이 달의 자리 배치를 만들어 주세요.'); return; }
+      const win = window.open('', '_blank');
+      if (!win) { alert('팝업이 차단됐어요. 이 사이트의 팝업을 허용해 주세요.'); return; }
+      const { cols, seats } = data;
+      const teacher = seatView === 'teacher';
+      const order = seats.map((_, i) => i);
+      const disp = teacher ? order.slice().reverse() : order;
+      let table = '<table>';
+      for (let r = 0; r < disp.length / cols; r++) {
+        table += '<tr>' + disp.slice(r * cols, r * cols + cols).map((oi) =>
+          `<td${seats[oi] ? '' : ' class="empty"'}>${esc(seats[oi] || '')}</td>`).join('') + '</tr>';
+      }
+      table += '</table>';
+      const board = '<div class="board">🖥️ 교탁 (칠판)</div>';
+      const h = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>자리 배치표 — ${esc(className)}</title><style>
+        @page { size: A4 landscape; margin: 12mm; }
+        body{font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;padding:10px;color:#111}
+        h1{font-size:20px;margin:0 0 2px;text-align:center}
+        .sub{text-align:center;color:#555;font-size:13px;margin:0 0 14px}
+        table{border-collapse:collapse;width:100%;table-layout:fixed}
+        td{border:1.5px solid #333;height:58px;text-align:center;font-size:17px;font-weight:700;word-break:keep-all}
+        td.empty{background:#f2f2f2}
+        .board{border:2px solid #333;background:#e8e8e8;text-align:center;padding:9px;font-weight:700;margin:12px 0;border-radius:6px}
+      </style></head><body>
+        <h1>${esc(className)} 자리 배치표</h1>
+        <p class="sub">${fmtYm(ym)} · ${teacher ? '교사용 보기 (칠판이 아래)' : '학생용 보기 (칠판이 위)'}</p>
+        ${teacher ? table + board : board + table}
+      </body></html>`;
+      win.document.write(h);
+      win.document.close();
+      win.focus();
+      setTimeout(() => win.print(), 300);
+    });
+    $('seatBtn').addEventListener('click', () => {
+      if (!roster.length) { alert('먼저 학생 명단을 저장해 주세요.'); return; }
+      const ym = $('seatMonth').value || ymNow();
+      if (seatsAll[ym] && !confirm(`${fmtYm(ym)} 자리 배치를 새로 섞을까요? (기존 배치는 사라져요)`)) return;
+      const cols = Number($('seatCols').value);
+      const seats = shuffle(roster);
+      while (seats.length % cols !== 0) seats.push('');
+      seatsAll[ym] = { cols, seats };
+      save('manage-seats-monthly', seatsAll);
+      renderSeats();
+    });
+    $('seatDel').addEventListener('click', () => {
+      const ym = $('seatMonth').value || ymNow();
+      if (!seatsAll[ym]) return;
+      if (!confirm(`${fmtYm(ym)} 자리 배치를 삭제할까요?`)) return;
+      delete seatsAll[ym];
+      save('manage-seats-monthly', seatsAll);
+      renderSeats();
+    });
+    $('seatMonth').addEventListener('change', renderSeats);
+    renderSeats();
+
+    // ── 청소 당번 ──
+    $('areas').value = load(KEY.areas, []).join(', ');
+    function renderDuty(duty) {
+      $('dutyResult').innerHTML = '<ul class="duty-list" style="margin-top:12px">' + duty.map((d) =>
+        `<li><span class="duty-area">${esc(d.area)}</span><span class="duty-who">${d.members.map(esc).join(', ') || '—'}</span></li>`
+      ).join('') + '</ul>';
+    }
+    $('dutyBtn').addEventListener('click', () => {
+      if (!roster.length) { alert('먼저 학생 명단을 저장해 주세요.'); return; }
+      const areas = parseNames($('areas').value);
+      if (!areas.length) { alert('청소 구역을 입력해 주세요.'); return; }
+      save(KEY.areas, areas);
+      const mixed = shuffle(roster);
+      const duty = areas.map((area) => ({ area, members: [] }));
+      mixed.forEach((n, i) => duty[i % areas.length].members.push(n));
+      save(KEY.duty, duty);
+      renderDuty(duty);
+    });
+    const savedDuty = load(KEY.duty, null);
+    if (savedDuty) renderDuty(savedDuty);
+
+    renderRoster();
+  </script>
+  <script src="console.js"></script>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>우리 반 관리 콘솔</title>
+  <meta name="description" content="담임용 관리 콘솔 — 학생·상담·성적·자리배치·학급 도구" />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%AB%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><b class="js-class">우리 반</b> <span>관리 콘솔</span></a>
+      <nav class="nav-links">
+        <a href="index.html" class="active">대시보드</a>
+        <a href="counsel.html">학생·상담</a>
+        <a href="grades.html">성적</a>
+        <a href="manage.html">학급 도구</a>
+        <a href="guide.html">학급 안내</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="page-head">
+      <h1>대시보드</h1>
+      <p><span class="js-class">우리 반</span> 담임용 관리 콘솔 — 모든 데이터는 이 컴퓨터의 브라우저에만 저장됩니다.</p>
+    </div>
+
+    <!-- 요약 -->
+    <div class="stat-row">
+      <div class="stat"><div class="stat-num" id="stStudents">0</div><div class="stat-label">등록 학생</div></div>
+      <div class="stat"><div class="stat-num" id="stRecords">0</div><div class="stat-label">상담 기록</div></div>
+      <div class="stat"><div class="stat-num" id="stExams">0</div><div class="stat-label">등록된 시험</div></div>
+      <div class="stat"><div class="stat-num" id="stLast">—</div><div class="stat-label">최근 상담일</div></div>
+    </div>
+
+    <!-- 관리 메뉴 -->
+    <div class="tile-grid">
+      <a class="tile" href="counsel.html">
+        <span class="tile-icon">🗂️</span>
+        <span><b>학생·상담 카드</b><small>학생별 개인 카드 · 상담 기록 관리</small></span>
+      </a>
+      <a class="tile" href="grades.html">
+        <span class="tile-icon">📊</span>
+        <span><b>성적 자료</b><small>점수 입력 · 평균 · 석차 · 추이 분석</small></span>
+      </a>
+      <a class="tile" href="manage.html#seatCard">
+        <span class="tile-icon">🪑</span>
+        <span><b>자리 배치</b><small>랜덤 자리 섞기 · 교탁 기준 배치도</small></span>
+      </a>
+      <a class="tile" href="manage.html">
+        <span class="tile-icon">🧰</span>
+        <span><b>학급 도구</b><small>명단 관리 · 발표자 뽑기 · 모둠 · 청소 당번</small></span>
+      </a>
+      <a class="tile" href="guide.html">
+        <span class="tile-icon">📋</span>
+        <span><b>학급 안내</b><small>급훈 · 학급 규칙 · 시간표 편집 → 인쇄 게시</small></span>
+      </a>
+    </div>
+
+    <!-- 최근 상담 -->
+    <section class="card">
+      <h2 class="card-title">최근 상담 기록</h2>
+      <div id="recentRecs"></div>
+      <p class="empty-hint" id="recentEmpty">아직 상담 기록이 없습니다. 우측 하단 채팅 버튼으로 빠르게 입력할 수 있어요.</p>
+    </section>
+
+    <!-- 설정 -->
+    <h2 class="section-h">설정 · 데이터</h2>
+    <div class="manage-grid">
+      <section class="card">
+        <h2 class="card-title">⚙️ 학급 이름 설정</h2>
+        <div class="row">
+          <input type="text" id="clsName" maxlength="30" placeholder="예: 2학년 3반" />
+          <button class="btn" id="clsSave">저장</button>
+        </div>
+        <p class="save-status" id="clsStatus" style="text-align:left"></p>
+        <p class="note">저장하면 모든 페이지 상단과 자리 배치표 인쇄물에 학급 이름이 표시됩니다.</p>
+      </section>
+      <section class="card">
+        <h2 class="card-title">💾 데이터 백업 · 복원</h2>
+        <p class="help">명단·상담·성적·자리배치 등 모든 데이터를 JSON 파일로 내보내거나 복원합니다. 컴퓨터를 바꿀 때 사용하세요.</p>
+        <div class="row" style="flex-wrap:wrap">
+          <button class="btn" id="backupBtn">📥 내보내기</button>
+          <button class="btn btn-ghost" id="restoreBtn">📤 가져오기</button>
+          <input type="file" id="restoreFile" accept=".json" hidden />
+          <button class="btn btn-danger" id="wipeBtn">전체 초기화</button>
+        </div>
+        <p class="note">백업 파일에는 학생 개인정보가 포함되므로 개인 저장 공간에만 보관하세요.</p>
+      </section>
+    </div>
+
+    <footer class="foot"><span><span class="js-class">우리 반</span> 관리 콘솔 · 데이터는 이 컴퓨터에만 저장됩니다</span></footer>
+  </main>
+
+  <!-- 상담 빠른 입력 채팅 -->
+  <button class="chat-fab" id="chatFab" aria-label="상담 빠른 입력 열기">🗨️</button>
+  <div class="chat-panel" id="chatPanel" hidden>
+    <div class="chat-head">
+      <span>상담 빠른 입력</span>
+      <button class="chat-close" id="chatClose" aria-label="닫기">✕</button>
+    </div>
+    <div class="chat-msgs" id="chatMsgs"></div>
+    <div class="chat-inputrow">
+      <textarea id="chatInput" rows="1" placeholder="예: 김하늘 오늘 친구와 다툼 상담…"></textarea>
+      <button class="chat-send" id="chatSend" aria-label="보내기">↑</button>
+    </div>
+  </div>
+  <script src="chat.js"></script>
+
+  <script>
+    (function () {
+      const load = (k, fb) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch { return fb; } };
+      const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const CAT_EMOJI = { '학업': '📚', '교우관계': '🤝', '진로': '🧭', '가정': '🏠', '생활': '🌱' };
+
+      const roster = load('manage-roster', []);
+      const records = load('counsel-records', []);
+      const grades = load('grades-data', { exams: [] });
+
+      document.getElementById('stStudents').textContent = roster.length;
+      document.getElementById('stRecords').textContent = records.length;
+      document.getElementById('stExams').textContent = grades.exams.length;
+      const dates = records.map((r) => r.date).filter(Boolean).sort();
+      document.getElementById('stLast').textContent = dates.length ? dates[dates.length - 1].slice(5).replace('-', '/') : '—';
+
+      const recent = records.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)) || b.id - a.id).slice(0, 5);
+      if (recent.length) {
+        document.getElementById('recentEmpty').classList.add('hidden');
+        document.getElementById('recentRecs').innerHTML = recent.map((r) => `
+          <div class="rec">
+            <div class="post-top">
+              <span class="rec-name">${esc(r.name)} <span class="tag">${CAT_EMOJI[r.cat] || ''} ${esc(r.cat)}</span></span>
+              <span class="post-time">${esc(r.date)}</span>
+            </div>
+            <div class="post-body">${esc(r.text.length > 90 ? r.text.slice(0, 90) + '…' : r.text)}</div>
+          </div>`).join('');
+      }
+
+      // ── 학급 이름 설정 ──
+      const NAME_KEY = 'console-class-name';
+      const clsIn = document.getElementById('clsName');
+      try { clsIn.value = localStorage.getItem(NAME_KEY) || ''; } catch {}
+      document.getElementById('clsSave').addEventListener('click', () => {
+        const v = clsIn.value.trim();
+        try { v ? localStorage.setItem(NAME_KEY, v) : localStorage.removeItem(NAME_KEY); } catch {}
+        document.getElementById('clsStatus').textContent = '✓ 저장했습니다';
+        setTimeout(() => location.reload(), 400);
+      });
+
+      // ── 데이터 백업 · 복원 ──
+      // 콘솔이 사용하는 localStorage 키 접두사
+      const PREFIXES = ['console-', 'manage-', 'counsel-', 'grades-', 'guide-'];
+      const ownKeys = () => Object.keys(localStorage).filter((k) => PREFIXES.some((p) => k.startsWith(p)));
+
+      document.getElementById('backupBtn').addEventListener('click', () => {
+        const data = {};
+        ownKeys().forEach((k) => { data[k] = localStorage.getItem(k); });
+        const blob = new Blob([JSON.stringify({ app: 'class-console', data }, null, 2)], { type: 'application/json;charset=utf-8' });
+        const a = document.createElement('a');
+        const d = new Date();
+        const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        a.href = URL.createObjectURL(blob);
+        a.download = `학급콘솔_백업_${stamp}.json`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+      document.getElementById('restoreBtn').addEventListener('click', () => document.getElementById('restoreFile').click());
+      document.getElementById('restoreFile').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(reader.result);
+            if (!parsed || parsed.app !== 'class-console' || typeof parsed.data !== 'object') throw new Error();
+            if (!confirm('현재 데이터를 백업 파일 내용으로 덮어씁니다. 계속할까요?')) return;
+            ownKeys().forEach((k) => localStorage.removeItem(k));
+            Object.entries(parsed.data).forEach(([k, v]) => {
+              if (PREFIXES.some((p) => k.startsWith(p)) && typeof v === 'string') localStorage.setItem(k, v);
+            });
+            location.reload();
+          } catch {
+            alert('올바른 백업 파일이 아닙니다.');
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+      });
+      document.getElementById('wipeBtn').addEventListener('click', () => {
+        if (confirm('명단·상담·성적·자리배치 등 모든 데이터를 삭제합니다. 계속할까요?') &&
+            confirm('정말 초기화할까요? 되돌릴 수 없습니다.')) {
+          ownKeys().forEach((k) => localStorage.removeItem(k));
+          location.reload();
+        }
+      });
+    })();
+  </script>
+  <script src="console.js"></script>
+</body>
+</html>

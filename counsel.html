@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>학생·상담 카드 — 우리 반 관리 콘솔</title>
+  <meta name="description" content="학생별 상담 카드 (이 컴퓨터에만 저장)" />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%97%82%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><b class="js-class">우리 반</b> <span>관리 콘솔</span></a>
+      <nav class="nav-links">
+        <a href="index.html">대시보드</a>
+        <a href="counsel.html" class="active">학생·상담</a>
+        <a href="grades.html">성적</a>
+        <a href="manage.html">학급 도구</a>
+        <a href="guide.html">학급 안내</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- 전체 목록 화면 -->
+    <div id="listView">
+      <div class="page-head">
+        <h1>학생·상담 카드</h1>
+        <p>상담카드 엑셀을 불러오거나 명단을 등록하면 학생별 카드가 만들어집니다. 데이터는 이 컴퓨터의 브라우저에만 저장됩니다.</p>
+      </div>
+
+      <!-- 가져오기 · 명단 -->
+      <section class="card" id="rosterCard">
+        <h2 class="card-title">상담카드 엑셀 불러오기</h2>
+        <p class="help">학생별 시트(<i>1. 이름</i>, <i>2. 이름</i>…)로 된 상담카드 파일(.xlsx)을 선택하세요.
+          번호·성별·연락처·가정환경·상담 내용·성적 분석을 자동으로 읽어 학생 카드에 채웁니다.
+          파일은 <b>브라우저 안에서만 읽히고 어디에도 전송되지 않습니다.</b></p>
+        <div class="row">
+          <input type="file" id="xlsxFile" accept=".xlsx,.xlsm" hidden />
+          <button class="btn" id="importBtn">📥 엑셀 파일 선택</button>
+          <span class="save-status" id="importStatus" style="text-align:left"></span>
+        </div>
+        <details style="margin-top:14px">
+          <summary style="cursor:pointer;font-size:.85rem;font-weight:600;color:var(--muted)">직접 명단 입력·수정</summary>
+          <textarea id="roster" rows="3" style="margin-top:10px" placeholder="예: 김하늘, 이도윤, 박서연&#10;최지우"></textarea>
+          <div class="row" style="margin-top:10px">
+            <button class="btn btn-ghost" id="saveRoster">명단 저장</button>
+            <span class="save-status" id="rosterStatus" style="text-align:left"></span>
+          </div>
+        </details>
+      </section>
+
+      <div class="toolbar">
+        <input type="text" id="search" placeholder="학생 이름 검색…" />
+        <select id="studentJump" style="max-width:200px;width:auto">
+          <option value="">학생 선택 ▾</option>
+        </select>
+        <span class="note" id="gridCount" style="margin:0"></span>
+      </div>
+      <div class="student-grid" id="studentGrid"></div>
+      <p class="empty-hint" id="gridEmpty">엑셀을 불러오거나 명단을 등록하면 학생 카드가 생성됩니다.</p>
+    </div>
+
+    <!-- 학생 상세 화면 -->
+    <div id="detailView" hidden>
+      <button class="back-btn" id="backBtn">‹ 전체 학생</button>
+      <div class="detail-head">
+        <span class="avatar avatar-lg" id="dAvatar"></span>
+        <div>
+          <h2 id="dName"></h2>
+          <div class="sc-meta" id="dMeta"></div>
+        </div>
+        <span id="dBadge" style="margin-left:auto"></span>
+        <button class="btn btn-ghost no-print" id="pdfBtn">🖨️ PDF 저장</button>
+      </div>
+
+      <div class="manage-grid">
+        <!-- 프로필 -->
+        <section class="card" id="dProfileCard" hidden>
+          <h2 class="card-title">기본 정보 · 연락처</h2>
+          <div id="dProfile"></div>
+        </section>
+
+        <!-- 메모·분포 -->
+        <section class="card">
+          <h2 class="card-title">학생 메모</h2>
+          <p class="help">특이사항·건강·가정환경 등 이 학생에 대한 메모. 입력하면 자동 저장됩니다.</p>
+          <textarea id="dMemo" rows="4" placeholder="예: 알레르기 있음(견과류), 미술에 관심 많음"></textarea>
+          <p class="save-status" id="memoStatus"></p>
+          <div id="dBars" style="margin-top:14px"></div>
+        </section>
+
+        <!-- 성적 분석 (전체 폭: 레이더 + 변화 그래프 나란히) -->
+        <section class="card span-2" id="dGradeCard" hidden>
+          <h2 class="card-title">성적 분석 <span class="tag" id="dGradeExam"></span></h2>
+          <div class="grade-flex">
+            <div class="grade-left">
+              <div class="radar-wrap" id="dRadar"></div>
+              <p class="radar-legend" id="dRadarLegend"><span class="legend-dot legend-me"></span> 학생 점수 <span class="legend-dot legend-avg"></span> 과목 평균</p>
+            </div>
+            <div class="grade-right" id="dTrend"></div>
+          </div>
+          <div class="table-wrap" id="dGradeTable" style="margin-top:14px"></div>
+        </section>
+
+        <!-- 상담카드 원본 내용 -->
+        <section class="card span-2" id="dSectionsCard" hidden>
+          <h2 class="card-title">상담카드 기록 <span class="tag">엑셀에서 가져옴</span></h2>
+          <div class="section-cols" id="dSections"></div>
+        </section>
+
+        <!-- 새 상담 기록 -->
+        <section class="card no-print">
+          <h2 class="card-title">새 상담 기록</h2>
+          <div class="log-grid" style="margin-bottom:12px">
+            <div class="field">
+              <label for="cDate">상담 날짜</label>
+              <input type="date" id="cDate" />
+            </div>
+            <div class="field">
+              <label for="cCat">상담 영역</label>
+              <select id="cCat">
+                <option value="학업">📚 학업·학습</option>
+                <option value="교우관계">🤝 교우관계</option>
+                <option value="진로">🧭 진로</option>
+                <option value="가정">🏠 가정</option>
+                <option value="생활">🌱 생활·기타</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="cText">상담 내용</label>
+            <textarea id="cText" rows="4" placeholder="상담 내용을 기록하세요"></textarea>
+          </div>
+          <div class="field">
+            <label for="cNext">후속 조치 <span class="opt">(선택)</span></label>
+            <input type="text" id="cNext" maxlength="200" placeholder="예: 2주 뒤 재상담, 학부모 연락" />
+          </div>
+          <button class="btn btn-block btn-submit" id="cSave" style="margin-top:12px">기록 저장</button>
+          <p class="save-status" id="cStatus"></p>
+        </section>
+
+        <!-- 상담 기록 목록 -->
+        <section class="card">
+          <h2 class="card-title">상담 기록 <span class="tag" id="dRecCount"></span></h2>
+          <div id="dRecs"></div>
+          <p class="empty-hint" id="dRecEmpty">아직 상담 기록이 없습니다.</p>
+        </section>
+      </div>
+    </div>
+
+    <footer class="foot"><span>상담 기록·개인정보는 이 컴퓨터의 브라우저에만 저장됩니다</span></footer>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const KEY = 'counsel-records', MEMO_KEY = 'counsel-memos', ROSTER_KEY = 'manage-roster';
+    const PROFILE_KEY = 'counsel-students', GRADE_KEY = 'counsel-grades';
+    const load = (k, fb) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch { return fb; } };
+    const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const CAT_EMOJI = { '학업': '📚', '교우관계': '🤝', '진로': '🧭', '가정': '🏠', '생활': '🌱' };
+    // 성적 분석표의 시험 행 라벨 — 학교 시험 체계(1·2회고사, 수행평가, 학기말)와
+    // 이전 형식(학기별 중간·기말)을 모두 인식. 뒤쪽일수록 최신으로 취급.
+    const EXAM_ORDER = ['1학기 중간', '1회고사', '1학기 기말', '2회고사', '수행평가', '2학기 중간', '2학기 기말', '학기말'];
+    const parseNames = (text) => [...new Set(text.split(/[,\n]/).map((s) => s.trim()).filter(Boolean))];
+
+    let roster = load(ROSTER_KEY, []);
+    let records = load(KEY, []);
+    let memos = load(MEMO_KEY, {});
+    let profiles = load(PROFILE_KEY, {});
+    let gradesMap = load(GRADE_KEY, {});
+    let current = null;
+
+    // 상담카드 양식의 성적은 전(前) 학년 성적 — 라벨에 표기
+    Object.values(gradesMap).forEach((list) => list.forEach((g) => { if (!/^지난해/.test(g.exam)) g.exam = '지난해 ' + g.exam; }));
+    // 성적 페이지(grades-data)에서 가져온 올해 성적과 합쳐 학생별 성적 이력 구성
+    const gradesDb = load('grades-data', { exams: [] });
+    function gradeHistory(name) {
+      const hist = (gradesMap[name] || []).slice();
+      gradesDb.exams.forEach((ex) => {
+        const row = ex.scores && ex.scores[name];
+        if (!row || !Object.keys(row).length) return;
+        const avg = {};
+        Object.keys(row).forEach((s) => { if (ex.avg && isFinite(ex.avg[s])) avg[s] = ex.avg[s]; });
+        hist.push({ exam: '올해 ' + ex.name, scores: row, avg });
+      });
+      return hist;
+    }
+
+    // ══════════ 엑셀 가져오기 ══════════
+    $('importBtn').addEventListener('click', () => {
+      if (typeof XLSX === 'undefined') { alert('엑셀 파서를 아직 불러오는 중입니다. 인터넷 연결을 확인한 뒤 다시 시도해 주세요.'); return; }
+      $('xlsxFile').click();
+    });
+    $('xlsxFile').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const wb = XLSX.read(await file.arrayBuffer());
+        const n = importWorkbook(wb);
+        $('importStatus').textContent = `✓ 학생 ${n}명을 불러왔습니다`;
+        setTimeout(() => { $('importStatus').textContent = ''; }, 5000);
+        renderGrid();
+      } catch (err) {
+        alert('파일을 읽지 못했습니다: ' + err.message);
+      }
+      e.target.value = '';
+    });
+
+    function importWorkbook(wb) {
+      const found = [];
+      wb.SheetNames.forEach((sn) => {
+        const m = sn.match(/^(\d+)\.\s*(.+)$/);
+        if (!m) return;
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, defval: '' });
+        const cell = (r, c) => String((rows[r] || [])[c] ?? '').trim();
+        const colA = (r) => cell(r, 0);
+        const p = { no: Number(m[1]), name: m[2].trim(), sections: {} };
+
+        // 번호·이름 (시트 내 값 우선)
+        for (let r = 0; r < Math.min(rows.length, 6); r++) {
+          const row = rows[r] || [];
+          for (let c = 0; c < row.length; c++) {
+            const v = String(row[c] ?? '').trim();
+            if (v === '번호' && row[c + 1] !== undefined && String(row[c + 1]).trim()) p.no = Number(row[c + 1]) || p.no;
+            if (v === '이름' && row[c + 1] !== undefined && String(row[c + 1]).trim()) p.name = String(row[c + 1]).trim();
+          }
+        }
+
+        // 연락처·상담 정보
+        const phoneIn = (row) => { for (const v of row) { const mm = String(v ?? '').match(/01[0-9][-\s]?\d{3,4}[-\s]?\d{4}/); if (mm) return mm[0]; } return ''; };
+        rows.forEach((row, r) => {
+          const a = colA(r);
+          if (a === '주소') p.address = cell(r, 1);
+          else if (a === '학생 H.P') p.phone = cell(r, 1);
+          else if (a.startsWith('보호자(부')) { p.father = cell(r, 1); p.fatherPhone = phoneIn((row || []).slice(2)); }
+          else if (a.startsWith('보호자(모')) { p.mother = cell(r, 1); p.motherPhone = phoneIn((row || []).slice(2)); }
+          else if (a === '상담일시') {
+            p.meetWhen = cell(r, 1);
+            const i = (row || []).findIndex((v) => String(v ?? '').trim() === '상담자');
+            if (i >= 0) p.meetWho = String(row[i + 1] ?? '').trim();
+          }
+        });
+
+        // 섹션 텍스트
+        const SECTION_KEYS = [
+          ['가정환경', 'home'], ['학교생활', 'school'], ['학부모 요청', 'parentReq'],
+          ['상담 내용', 'counsel'], ['특이사항', 'followup'], ['안전사고', 'safety'], ['성적 분석', '__grades__'],
+        ];
+        const marks = [];
+        rows.forEach((row, r) => {
+          const a = colA(r);
+          for (const [kw, id] of SECTION_KEYS) if (a.includes(kw)) { marks.push({ r, id }); break; }
+        });
+        marks.forEach((mk, i) => {
+          if (mk.id === '__grades__') return;
+          const end = i + 1 < marks.length ? marks[i + 1].r : rows.length;
+          const texts = [];
+          for (let r = mk.r + 1; r < end; r++) if (colA(r)) texts.push(colA(r));
+          if (texts.length) p.sections[mk.id] = texts.join('\n');
+        });
+
+        // 성별 (가정환경 텍스트에서)
+        const gm = String(p.sections.home || '').match(/성별\s*[:：]\s*([남여])/);
+        if (gm) p.gender = gm[1];
+
+        // 성적 분석 표 (두 블록)
+        const exams = {};
+        let subjects = null, lastExam = null;
+        rows.forEach((row, r) => {
+          const a = colA(r);
+          if (a === '시험') { subjects = (row || []).slice(1).map((v) => String(v ?? '').trim()).filter(Boolean); lastExam = null; return; }
+          if (!subjects) return;
+          if (a.replace(/\s/g, '').startsWith('과목평균')) {
+            if (!lastExam) return;
+            subjects.forEach((s, i) => { const v = Number(row[i + 1]); if (String(row[i + 1]).trim() !== '' && isFinite(v)) (exams[lastExam].avg[s] = v); });
+          } else if (EXAM_ORDER.includes(a)) {
+            lastExam = a;
+            exams[a] = exams[a] || { scores: {}, avg: {} };
+            subjects.forEach((s, i) => { const v = Number(row[i + 1]); if (String(row[i + 1]).trim() !== '' && isFinite(v)) (exams[a].scores[s] = v); });
+          }
+        });
+        const gradeList = EXAM_ORDER.filter((ex) => exams[ex] && Object.keys(exams[ex].scores).length)
+          .map((ex) => ({ exam: '지난해 ' + ex, scores: exams[ex].scores, avg: exams[ex].avg }));
+
+        profiles[p.name] = p;
+        if (gradeList.length) gradesMap[p.name] = gradeList;
+        found.push(p);
+      });
+
+      if (!found.length) throw new Error('학생 시트(예: “1. 이름”)를 찾지 못했습니다.');
+      found.sort((a, b) => (a.no || 999) - (b.no || 999));
+      roster = found.map((p) => p.name);
+      save(ROSTER_KEY, roster); save(PROFILE_KEY, profiles); save(GRADE_KEY, gradesMap);
+      $('roster').value = roster.join(', ');
+      return found.length;
+    }
+
+    // ══════════ 레이더 차트 (SVG) ══════════
+    function latestGrade(name) {
+      const list = gradeHistory(name);
+      return list.length ? list[list.length - 1] : null;
+    }
+    function statusOf(name) {
+      const list = gradeHistory(name);
+      // 과목평균이 함께 있는 가장 최근 시험으로 판정
+      for (let i = list.length - 1; i >= 0; i--) {
+        const g = list[i];
+        const diffs = Object.keys(g.scores).filter((s) => isFinite(g.avg[s])).map((s) => g.scores[s] - g.avg[s]);
+        if (!diffs.length) continue;
+        const mean = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+        return mean >= -5 ? 'ok' : 'watch';
+      }
+      return null;
+    }
+    function radarSVG(subjects, vals, avgs, size) {
+      const cx = size / 2, cy = size / 2, R = size / 2 - 30;
+      const N = subjects.length;
+      const ang = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / N;
+      const pt = (i, r) => [cx + r * Math.cos(ang(i)), cy + r * Math.sin(ang(i))];
+      const poly = (arr) => arr.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+      let s = `<svg class="radar-svg" viewBox="0 0 ${size} ${size}" style="max-width:${size}px">`;
+      for (const f of [0.25, 0.5, 0.75, 1]) {
+        s += `<polygon points="${poly(subjects.map((_, i) => pt(i, R * f)))}" fill="${f === 1 ? 'rgba(79,70,229,.04)' : 'none'}" stroke="#e2e8f0" stroke-width="1"/>`;
+      }
+      subjects.forEach((_, i) => { const [x, y] = pt(i, R); s += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#e2e8f0" stroke-width="1"/>`; });
+      if (avgs && avgs.some((v) => v !== null)) {
+        s += `<polygon points="${poly(subjects.map((_, i) => pt(i, R * ((avgs[i] ?? 0) / 100))))}" fill="rgba(245,158,11,.10)" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+      }
+      s += `<polygon points="${poly(subjects.map((_, i) => pt(i, R * (vals[i] / 100))))}" fill="rgba(79,70,229,.16)" stroke="#4f46e5" stroke-width="2" stroke-linejoin="round"/>`;
+      subjects.forEach((_, i) => { const [x, y] = pt(i, R * (vals[i] / 100)); s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.8" fill="#4f46e5"/>`; });
+      subjects.forEach((sub, i) => {
+        const c = Math.cos(ang(i)), sn = Math.sin(ang(i));
+        const [x, y] = pt(i, R + 13);
+        const anchor = c > 0.3 ? 'start' : c < -0.3 ? 'end' : 'middle';
+        const dy = sn < -0.3 ? 0 : sn > 0.3 ? 8 : 4;
+        s += `<text x="${x.toFixed(1)}" y="${(y + dy).toFixed(1)}" text-anchor="${anchor}" font-size="10" fill="#64748b" font-weight="600">${esc(sub)}</text>`;
+      });
+      return s + '</svg>';
+    }
+    // ── 국·수·영 성적 변화 꺾은선 그래프 ──
+    const TREND_SUBJECTS = [['국어', '#4f46e5'], ['수학', '#059669'], ['영어', '#f59e0b']];
+    function trendBlock(hist) {
+      const pts = hist.filter((g) => TREND_SUBJECTS.some(([s]) => isFinite(g.scores[s])));
+      if (pts.length < 2) return '';
+      const W = 560, H = 250, L = 34, R = 24, T = 16, B = 46;
+      const iw = W - L - R, ih = H - T - B;
+      const x = (i) => L + (i * iw) / (pts.length - 1);
+      const y = (v) => T + ((100 - v) / 100) * ih;
+      let s = `<svg class="trend-svg" viewBox="0 0 ${W} ${H}">`;
+      [0, 25, 50, 75, 100].forEach((v) => {
+        s += `<line x1="${L}" y1="${y(v)}" x2="${W - R}" y2="${y(v)}" stroke="#e2e8f0"/><text x="${L - 6}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#94a3b8">${v}</text>`;
+      });
+      pts.forEach((g, i) => {
+        const words = g.exam.split(' ');
+        const l1 = words[0], l2 = words.slice(1).join(' ');
+        s += `<text x="${x(i).toFixed(1)}" y="${H - B + 17}" text-anchor="middle" font-size="9.5" fill="#64748b" font-weight="600">${esc(l1)}<tspan x="${x(i).toFixed(1)}" dy="11">${esc(l2)}</tspan></text>`;
+      });
+      TREND_SUBJECTS.forEach(([sub, color], si) => {
+        const dx = [0, -14, 14][si] || 0; // 점수가 비슷할 때 라벨 겹침 방지
+        const coords = [];
+        pts.forEach((g, i) => { if (isFinite(g.scores[sub])) coords.push([x(i), y(g.scores[sub]), g.scores[sub]]); });
+        if (!coords.length) return;
+        if (coords.length > 1) s += `<polyline points="${coords.map((c) => c[0].toFixed(1) + ',' + c[1].toFixed(1)).join(' ')}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>`;
+        coords.forEach(([cx, cy, v]) => {
+          const lx = Math.max(L + 8, Math.min(W - 10, cx + dx)); // 라벨이 잘리지 않게
+          s += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.5" fill="${color}"/><text x="${lx.toFixed(1)}" y="${(cy - 7).toFixed(1)}" text-anchor="middle" font-size="9" fill="${color}" font-weight="700">${v}</text>`;
+        });
+      });
+      s += '</svg>';
+      const legend = '<p class="radar-legend">' + TREND_SUBJECTS.map(([s2, c]) => `<span class="legend-dot" style="background:${c};margin-left:10px"></span> ${s2}`).join('') + '</p>';
+      return '<p class="sub-h" style="margin-top:18px">📈 국·수·영 성적 변화</p><div class="table-wrap">' + s + '</div>' + legend;
+    }
+
+    function radarFor(name, size) {
+      const g = latestGrade(name);
+      if (!g) return null;
+      const subjects = Object.keys(g.scores);
+      if (subjects.length < 3) return null;
+      const vals = subjects.map((s) => g.scores[s]);
+      const avgs = subjects.map((s) => (isFinite(g.avg[s]) ? g.avg[s] : null));
+      return { svg: radarSVG(subjects, vals, avgs, size), exam: g.exam };
+    }
+
+    // ══════════ 명단 직접 입력 ══════════
+    $('roster').value = roster.join(', ');
+    $('saveRoster').addEventListener('click', () => {
+      roster = parseNames($('roster').value);
+      save(ROSTER_KEY, roster);
+      $('rosterStatus').textContent = `✓ ${roster.length}명 저장했습니다`;
+      setTimeout(() => { $('rosterStatus').textContent = ''; }, 3000);
+      renderGrid();
+    });
+
+    // ══════════ 학생 카드 그리드 ══════════
+    const allNames = () => [...new Set([...roster, ...records.map((r) => r.name), ...Object.keys(profiles)])];
+    function studentStats(name) {
+      const recs = records.filter((r) => r.name === name);
+      const dates = recs.map((r) => r.date).filter(Boolean).sort();
+      return { count: recs.length, last: dates.length ? dates[dates.length - 1] : null };
+    }
+    const badgeHTML = (st) => st === 'ok' ? '<span class="badge-ok">안정</span>' : st === 'watch' ? '<span class="badge-watch">관찰</span>' : '';
+    function renderGrid() {
+      const q = $('search').value.trim();
+      const names = allNames().filter((n) => !q || n.includes(q));
+      names.sort((a, b) => ((profiles[a]?.no ?? 999) - (profiles[b]?.no ?? 999)) || a.localeCompare(b));
+      $('studentGrid').innerHTML = names.map((n) => {
+        const p = profiles[n] || {};
+        const s = studentStats(n);
+        const sub = [p.no ? p.no + '번' : null, p.gender ? p.gender : null].filter(Boolean).join(' · ');
+        const r = radarFor(n, 190);
+        return `<button class="student-card" data-name="${esc(n)}">
+          <span class="sc-top">
+            <span class="avatar">${esc(n.charAt(0))}</span>
+            <span><span class="sc-name">${esc(n)}</span>${sub ? `<span class="sc-sub">${esc(sub)}</span>` : ''}</span>
+            ${badgeHTML(statusOf(n))}
+          </span>
+          ${r ? `<span class="radar-wrap">${r.svg}</span>` : `<span class="sc-meta">
+            <span>${s.count ? `상담 ${s.count}회` : '상담 기록 없음'}</span>
+            <span>${s.last ? '최근 ' + esc(s.last) : ''}</span>
+            ${memos[n] ? '<span class="sc-badge">메모 있음</span>' : ''}
+          </span>`}
+        </button>`;
+      }).join('');
+      $('gridEmpty').classList.toggle('hidden', names.length > 0);
+      $('gridCount').textContent = names.length ? `${names.length}명` : '';
+      renderJump();
+    }
+    $('search').addEventListener('input', renderGrid);
+    function renderJump() {
+      const names = allNames().slice().sort((a, b) => ((profiles[a]?.no ?? 999) - (profiles[b]?.no ?? 999)) || a.localeCompare(b));
+      $('studentJump').innerHTML = '<option value="">학생 선택 ▾</option>' + names.map((n) => {
+        const no = profiles[n]?.no;
+        return `<option value="${esc(n)}">${no ? no + '번 ' : ''}${esc(n)}</option>`;
+      }).join('');
+    }
+    $('studentJump').addEventListener('change', () => {
+      const n = $('studentJump').value;
+      if (n) { openDetail(n); $('studentJump').value = ''; }
+    });
+    // PDF 저장 — 브라우저 인쇄 대화상자에서 'PDF로 저장' 선택
+    $('pdfBtn').addEventListener('click', () => window.print());
+    $('studentGrid').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-name]');
+      if (btn) openDetail(btn.getAttribute('data-name'));
+    });
+
+    // ══════════ 상세 화면 ══════════
+    const pad = (n) => String(n).padStart(2, '0');
+    const todayISO = () => { const t = new Date(); return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`; };
+    const SECTION_TITLES = {
+      home: '🏠 가정환경', school: '🏫 학교생활', parentReq: '🗣️ 학부모 요청사항',
+      counsel: '📝 상담 내용', followup: '⚡ 특이사항 / 후속 조치', safety: '🚑 안전사고 / 보건 안내',
+    };
+
+    function openDetail(name) {
+      current = name;
+      $('listView').hidden = true;
+      $('detailView').hidden = false;
+      const p = profiles[name] || {};
+      $('dAvatar').textContent = name.charAt(0);
+      $('dName').textContent = name;
+      $('dBadge').innerHTML = badgeHTML(statusOf(name));
+      $('cDate').value = todayISO();
+      $('cText').value = ''; $('cNext').value = '';
+      $('dMemo').value = memos[name] || '';
+
+      // 프로필
+      const rows = [
+        ['번호·성별', [p.no ? p.no + '번' : null, p.gender].filter(Boolean).join(' · ')],
+        ['학생 연락처', p.phone], ['주소', p.address],
+        ['보호자(부)', [p.father, p.fatherPhone].filter(Boolean).join(' · ')],
+        ['보호자(모)', [p.mother, p.motherPhone].filter(Boolean).join(' · ')],
+        ['상담일시', p.meetWhen], ['상담자', p.meetWho],
+      ].filter((r) => r[1]);
+      $('dProfileCard').hidden = !rows.length;
+      $('dProfile').innerHTML = rows.map(([k, v]) => `<div class="p-row"><span class="p-k">${k}</span><span class="p-v">${esc(v)}</span></div>`).join('');
+
+      // 성적 레이더 + 표 + 국·수·영 변화 그래프
+      const list = gradeHistory(name);
+      const r = radarFor(name, 280);
+      $('dGradeCard').hidden = !r && !list.length;
+      $('dRadar').innerHTML = r ? r.svg : '';
+      $('dRadarLegend').hidden = !r;
+      $('dGradeExam').textContent = r ? r.exam : '';
+      if (list.length) {
+        const subs = [...new Set(list.flatMap((g) => Object.keys(g.scores)))];
+        $('dGradeTable').innerHTML = `<table class="stats-table"><thead><tr><th>시험</th>${subs.map((s) => `<th>${esc(s)}</th>`).join('')}</tr></thead><tbody>` +
+          list.map((g) => `<tr><td class="c-name">${esc(g.exam)}</td>${subs.map((s) => {
+            const v = g.scores[s], a = g.avg[s];
+            return `<td>${isFinite(v) ? `<b>${v}</b>${isFinite(a) ? `<span class="g-avg">평균 ${a}</span>` : ''}` : '—'}</td>`;
+          }).join('')}</tr>`).join('') + '</tbody></table>';
+      } else {
+        $('dGradeTable').innerHTML = '';
+      }
+      $('dTrend').innerHTML = trendBlock(list);
+
+      // 상담카드 섹션
+      const secs = Object.entries(SECTION_TITLES).filter(([id]) => p.sections && p.sections[id]);
+      $('dSectionsCard').hidden = !secs.length;
+      $('dSections').innerHTML = secs.map(([id, title]) =>
+        `<div class="section-block"><h3>${title}</h3><p>${esc(p.sections[id])}</p></div>`).join('');
+
+      renderDetail();
+      window.scrollTo(0, 0);
+    }
+
+    function renderDetail() {
+      const recs = records.filter((r) => r.name === current)
+        .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)) || b.id - a.id);
+      const s = studentStats(current);
+      $('dMeta').innerHTML = `<span>상담 ${s.count}회</span>${s.last ? `<span>최근 ${esc(s.last)}</span>` : ''}`;
+      $('dRecCount').textContent = `${recs.length}건`;
+      $('dRecs').innerHTML = recs.map((r) => `
+        <div class="rec">
+          <div class="post-top">
+            <span class="rec-name"><span class="tag" style="margin-left:0">${CAT_EMOJI[r.cat] || ''} ${esc(r.cat)}</span></span>
+            <span class="post-time">${esc(r.date)} <button class="del-btn" data-del="${r.id}">삭제</button></span>
+          </div>
+          <div class="post-body">${esc(r.text)}</div>
+          ${r.next ? `<div class="rec-next">후속 조치: ${esc(r.next)}</div>` : ''}
+        </div>`).join('');
+      $('dRecEmpty').classList.toggle('hidden', recs.length > 0);
+
+      const byCat = {};
+      recs.forEach((r) => { byCat[r.cat] = (byCat[r.cat] || 0) + 1; });
+      const maxCat = Math.max(1, ...Object.values(byCat));
+      $('dBars').innerHTML = recs.length ? '<p class="sub-h">영역별 상담 분포</p>' + Object.entries(byCat).map(([cat, n]) =>
+        `<div class="bar-row"><span class="bar-label">${CAT_EMOJI[cat] || ''} ${esc(cat)}</span><span class="bar-track"><span class="bar-fill" style="width:${Math.round(n / maxCat * 100)}%"></span></span><span class="bar-val">${n}건</span></div>`
+      ).join('') : '';
+    }
+
+    $('backBtn').addEventListener('click', () => {
+      current = null;
+      $('detailView').hidden = true;
+      $('listView').hidden = false;
+      renderGrid();
+    });
+
+    $('cSave').addEventListener('click', () => {
+      const text = $('cText').value.trim();
+      if (!text) { alert('상담 내용을 입력해 주세요.'); return; }
+      records.push({ id: Date.now(), name: current, date: $('cDate').value || '', cat: $('cCat').value, text, next: $('cNext').value.trim() });
+      save(KEY, records);
+      $('cText').value = ''; $('cNext').value = '';
+      $('cStatus').textContent = '✓ 기록을 저장했습니다';
+      setTimeout(() => { $('cStatus').textContent = ''; }, 3000);
+      renderDetail();
+    });
+
+    $('dRecs').addEventListener('click', (e) => {
+      const id = e.target.getAttribute('data-del');
+      if (!id) return;
+      if (!confirm('이 상담 기록을 삭제할까요?')) return;
+      records = records.filter((r) => String(r.id) !== id);
+      save(KEY, records);
+      renderDetail();
+    });
+
+    let memoTimer = null;
+    $('dMemo').addEventListener('input', () => {
+      const v = $('dMemo').value.trim();
+      if (v) memos[current] = v; else delete memos[current];
+      save(MEMO_KEY, memos);
+      $('memoStatus').textContent = '✓ 자동 저장됨';
+      clearTimeout(memoTimer);
+      memoTimer = setTimeout(() => { $('memoStatus').textContent = ''; }, 2000);
+    });
+
+    renderGrid();
+  </script>
+  <script src="console.js"></script>
+</body>
+</html>
