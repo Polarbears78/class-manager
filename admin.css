@@ -375,6 +375,52 @@ button.seat:hover { transform: translateY(-1px); }
 .prose li { margin: 4px 0; }
 .prose b { color: var(--text); }
 
+/* ===== 학부모 안내문 (A4 한 장) ===== */
+.handout-grid { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
+@media (min-width: 1060px) { .handout-grid { grid-template-columns: 400px 1fr; } }
+
+.sheet {
+  background: #fff; color: #0f172a; border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 30px 34px; max-width: 700px;
+  font-size: .92rem; line-height: 1.7;
+}
+.sheet-head { text-align: center; border-bottom: 2px solid var(--accent); padding-bottom: 14px; margin-bottom: 20px; }
+.sheet-school { margin: 0 0 6px; font-size: .8rem; color: var(--muted); font-weight: 600; letter-spacing: .02em; }
+.sheet-title { margin: 0; font-size: 1.32rem; font-weight: 800; letter-spacing: -.02em; }
+.sheet-sub { margin: 7px 0 0; font-size: .84rem; color: var(--muted); font-weight: 600; }
+
+.sheet-sec { margin-bottom: 20px; }
+.sheet-sec:last-of-type { margin-bottom: 0; }
+.sheet-sec h2 {
+  margin: 0 0 9px; font-size: .95rem; font-weight: 700; color: var(--accent-dark);
+  padding-left: 10px; border-left: 4px solid var(--accent);
+}
+.sheet-sec h2 small { color: var(--muted); font-weight: 600; font-size: .82rem; margin-left: 5px; }
+.sheet-sec ul, .sheet-sec ol { margin: 0; padding-left: 22px; }
+.sheet-sec li { margin: 5px 0; }
+.sheet-sec p { margin: 0; white-space: pre-wrap; }
+
+.sheet-foot {
+  margin-top: 24px; padding-top: 13px; border-top: 1px dashed var(--border);
+  display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: .82rem; color: var(--muted); font-weight: 600;
+}
+
+/* 안내문 성적 그래프 */
+/* 넓은 화면·인쇄에서 그래프 글자가 본문보다 커지지 않도록 원래 크기를 상한으로 둔다 */
+.chart-svg { width: 100%; max-width: 560px; height: auto; display: block; }
+.chart-svg .c-lab { font-size: 12px; font-weight: 700; fill: #334155; }
+.chart-svg .c-bg { fill: #eef2ff; }
+.chart-svg .c-me { fill: #4f46e5; }
+.chart-svg .c-avg { stroke: #0f172a; stroke-width: 2; stroke-dasharray: 3 2; }
+.chart-svg .c-val { font-size: 12px; font-weight: 700; fill: #0f172a; }
+.chart-svg .c-sub { font-size: 11px; font-weight: 600; fill: #64748b; }
+
+@media print {
+  .handout-grid { display: block; }
+  .sheet { border: none; box-shadow: none; border-radius: 0; padding: 0; max-width: none; }
+  .sheet-sec { break-inside: avoid; }
+}
+
 /* ===== 인쇄(PDF 저장) ===== */
 @media print {
   .nav, .foot, .back-btn, .no-print, .chat-fab, .chat-panel, .toolbar { display: none !important; }

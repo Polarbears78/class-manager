@@ -18,6 +18,7 @@
         <a href="counsel.html">학생·상담</a>
         <a href="grades.html">성적</a>
         <a href="report.html" class="active">생기부 분석</a>
+        <a href="handout.html">학부모 안내문</a>
         <a href="manage.html">학급 도구</a>
         <a href="guide.html">학급 안내</a>
       </nav>
@@ -161,6 +162,7 @@
         <button class="btn btn-ghost" id="outCopy">📋 복사</button>
         <button class="btn btn-ghost" id="outPrint">🖨️ 인쇄 · PDF 저장</button>
         <button class="btn btn-ghost" id="outSave">🗂️ 상담 기록으로 저장</button>
+        <button class="btn btn-ghost" id="outHandout">📄 학부모 안내문 만들기</button>
         <span class="save-status" id="outStatus" style="text-align:left"></span>
       </div>
     </section>
@@ -630,6 +632,16 @@
       $('genStop').addEventListener('click', () => { if (controller) controller.abort(); });
 
       /* ══════════ 결과 활용 ══════════ */
+      // 상담 기록으로 저장한 뒤 안내문 페이지로 — 안내문이 초안에서 강점·도움말을 끌어온다
+      $('outHandout').addEventListener('click', () => {
+        const st = currentStudent();
+        if (!st || !lastOutput) return;
+        const already = load('counsel-records', [])
+          .some((r) => r.name === st.name && /생기부 분석 초안/.test(String(r.text)));
+        if (!already) $('outSave').click();
+        location.href = 'handout.html?student=' + encodeURIComponent(st.name);
+      });
+
       $('outCopy').addEventListener('click', async () => {
         try { await navigator.clipboard.writeText(lastOutput); flash($('outStatus'), '✓ 복사했습니다'); }
         catch { flash($('outStatus'), '복사에 실패했습니다. 글을 직접 선택해 주세요.'); }
