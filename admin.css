@@ -335,6 +335,46 @@ button.seat:hover { transform: translateY(-1px); }
 }
 .chat-send:hover { background: var(--accent-dark); }
 
+/* ===== 생기부 분석 페이지 ===== */
+.det-sum { cursor: pointer; font-size: .85rem; font-weight: 600; color: var(--muted); }
+.det-sum:hover { color: var(--accent); }
+
+/* 서버 연결 상태 표시등 */
+.ai-dot {
+  display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+  background: #cbd5e1; margin-left: 10px; vertical-align: middle; flex: 0 0 9px;
+}
+.ai-dot[data-state="ok"] { background: var(--ok); }
+.ai-dot[data-state="bad"] { background: var(--danger); }
+.ai-dot[data-state="busy"] { background: #f59e0b; animation: ai-pulse 1s ease-in-out infinite; }
+@keyframes ai-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+.ai-state { font-size: .78rem; font-weight: 600; color: var(--muted); margin-left: 5px; }
+
+.warn-box {
+  background: var(--warn-bg); color: var(--warn-text); border-radius: 9px;
+  padding: 11px 14px; font-size: .85rem; line-height: 1.6; margin: 0 0 14px;
+}
+
+/* 선택 가능한 칩(생기부 영역 고르기) */
+.chip-sub { color: var(--muted); font-weight: 600; margin-left: 4px; font-size: .78rem; }
+.chip-sel { transition: border-color .12s ease, background .12s ease; }
+.chip-sel:hover { border-color: var(--accent); }
+.chip-sel.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-dark); }
+.chip-sel.on .chip-sub { color: var(--accent); }
+
+/* 생성된 상담 자료 본문 — 모델이 쓴 '##'가 h3, '###'가 h4로 들어온다 */
+.prose { font-size: .93rem; line-height: 1.75; }
+.prose h2, .prose h3 {
+  font-size: 1rem; color: var(--accent-dark); margin: 22px 0 8px;
+  padding-bottom: 5px; border-bottom: 1px solid var(--border);
+}
+.prose h2:first-child, .prose h3:first-child { margin-top: 4px; }
+.prose h4, .prose h5 { font-size: .92rem; margin: 16px 0 6px; color: #334155; }
+.prose p { margin: 8px 0; }
+.prose ul, .prose ol { margin: 8px 0; padding-left: 22px; }
+.prose li { margin: 4px 0; }
+.prose b { color: var(--text); }
+
 /* ===== 인쇄(PDF 저장) ===== */
 @media print {
   .nav, .foot, .back-btn, .no-print, .chat-fab, .chat-panel, .toolbar { display: none !important; }

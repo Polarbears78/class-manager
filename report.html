@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>생기부 분석 — 우리 반 관리 콘솔</title>
+  <meta name="description" content="생기부를 교내 AI 서버로 분석해 학부모 상담 자료를 만듭니다 (자료는 학교 밖으로 나가지 않습니다)" />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%BE%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><b class="js-class">우리 반</b> <span>관리 콘솔</span></a>
+      <nav class="nav-links">
+        <a href="index.html">대시보드</a>
+        <a href="counsel.html">학생·상담</a>
+        <a href="grades.html">성적</a>
+        <a href="report.html" class="active">생기부 분석</a>
+        <a href="manage.html">학급 도구</a>
+        <a href="guide.html">학급 안내</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="page-head">
+      <h1>생기부 분석 · 학부모 상담 자료</h1>
+      <p>생기부를 불러오면 <b>학교에 설치한 AI 서버(젯슨)</b>가 읽고 상담용 초안을 만들어 드립니다.
+        생기부 원문과 분석 요청은 <b>교내망 안에서만</b> 오가며 인터넷으로 나가지 않습니다.</p>
+    </div>
+
+    <!-- ══════ 1. 서버 연결 ══════ -->
+    <section class="card">
+      <h2 class="card-title">1️⃣ 분석 서버 연결 <span class="ai-dot" id="aiDot" data-state="off"></span><span class="ai-state" id="aiState">연결 확인 안 됨</span></h2>
+      <p class="help">학교에 설치한 젯슨 오린 나노(또는 다른 로컬 서버)의 주소를 넣어 주세요.
+        설치 방법은 <a href="JETSON.md">젯슨 설치 가이드</a>를 참고하세요.</p>
+      <div class="log-grid">
+        <div class="field">
+          <label for="aiBase">서버 주소</label>
+          <input type="text" id="aiBase" placeholder="http://192.168.0.100:11434" />
+        </div>
+        <div class="field">
+          <label for="aiModel">사용할 모델</label>
+          <div class="row">
+            <select id="aiModel"><option value="">— 목록 불러오기를 눌러 주세요 —</option></select>
+            <button class="btn btn-ghost" id="aiRefresh" title="서버에 설치된 모델 목록 가져오기">↻ 목록</button>
+          </div>
+        </div>
+      </div>
+      <div class="row" style="flex-wrap:wrap;margin-top:4px">
+        <button class="btn" id="aiTest">🔌 연결 테스트</button>
+        <button class="btn btn-ghost" id="aiSave">설정 저장</button>
+        <span class="save-status" id="aiStatus" style="text-align:left"></span>
+      </div>
+      <details style="margin-top:14px">
+        <summary class="det-sum">고급 설정</summary>
+        <div class="log-grid" style="margin-top:10px">
+          <div class="field">
+            <label for="aiApi">서버 규격</label>
+            <select id="aiApi">
+              <option value="auto">자동 감지 (권장)</option>
+              <option value="openai">OpenAI 호환 (/v1/chat/completions)</option>
+              <option value="ollama">Ollama (/api/chat)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="aiTemp">창의성 (temperature) <span class="opt">낮을수록 사실 위주</span></label>
+            <input type="number" id="aiTemp" min="0" max="1" step="0.1" />
+          </div>
+          <div class="field">
+            <label for="aiMax">최대 생성 길이 (토큰)</label>
+            <input type="number" id="aiMax" min="200" max="8000" step="100" />
+          </div>
+          <div class="field">
+            <label for="aiTimeout">응답 대기 시간 (초)</label>
+            <input type="number" id="aiTimeout" min="30" max="900" step="10" />
+          </div>
+        </div>
+      </details>
+      <p class="warn-box" id="aiMixed" hidden></p>
+    </section>
+
+    <!-- ══════ 2. 생기부 불러오기 ══════ -->
+    <section class="card">
+      <h2 class="card-title">2️⃣ 생기부 불러오기</h2>
+      <p class="help">나이스에서 내려받은 생기부 <b>PDF</b> 또는 <b>텍스트(.txt)</b> 파일을 고르세요.
+        여러 학생이 한 파일에 들어 있어도 자동으로 나눕니다.
+        파일은 브라우저 안에서만 읽히며, <b>원문은 어디에도 저장하지 않습니다</b>(새로고침하면 사라집니다).</p>
+      <div class="row" style="flex-wrap:wrap">
+        <input type="file" id="sgbFile" accept=".pdf,.txt,.text" multiple hidden />
+        <button class="btn" id="sgbPick">📄 생기부 파일 선택</button>
+        <span class="save-status" id="sgbStatus" style="text-align:left"></span>
+      </div>
+      <p class="warn-box" id="pdfWarn" hidden style="margin:14px 0 0">
+        ⚠️ PDF 읽기 도구를 불러오지 못했습니다(인터넷 연결 없음). 아래 <b>붙여넣기</b>를 이용하시거나,
+        젯슨에 도구 파일을 함께 올려 두면 인터넷 없이도 PDF를 열 수 있습니다 — <a href="JETSON.md">설치 가이드</a> 참고.
+      </p>
+      <details style="margin-top:14px" id="pasteDetails">
+        <summary class="det-sum">파일 대신 붙여넣기 (스캔 PDF·한글 문서일 때)</summary>
+        <textarea id="sgbPaste" rows="5" style="margin-top:10px" placeholder="생기부 내용을 복사해 붙여넣으세요."></textarea>
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-ghost" id="sgbPasteBtn">붙여넣은 내용 불러오기</button>
+        </div>
+      </details>
+      <div class="chip-list" id="sgbChips"></div>
+      <p class="empty-hint" id="sgbEmpty">아직 불러온 생기부가 없습니다.</p>
+    </section>
+
+    <!-- ══════ 3. 상담 자료 만들기 ══════ -->
+    <section class="card">
+      <h2 class="card-title">3️⃣ 상담 자료 만들기</h2>
+      <div class="log-grid">
+        <div class="field">
+          <label for="genStudent">학생</label>
+          <select id="genStudent"><option value="">— 먼저 생기부를 불러오세요 —</option></select>
+        </div>
+        <div class="field">
+          <label for="genPurpose">상담 목적</label>
+          <select id="genPurpose">
+            <option value="정기">정기 학부모 상담</option>
+            <option value="학업">학업·성적 상담</option>
+            <option value="진로">진로·진학 상담</option>
+            <option value="생활">생활·교우관계 상담</option>
+            <option value="종합">학기말 종합 총평</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>모델에 넘길 생기부 영역</label>
+        <div class="chip-list" id="secChips"></div>
+        <p class="note" id="secNote">영역을 적게 넣을수록 빠르고, 많이 넣을수록 자세해집니다.</p>
+      </div>
+
+      <label class="check-label"><input type="checkbox" id="optMask" checked /> 학생·보호자 <b>이름을 ○○○로 가리고</b> 보내기 (주민번호·연락처·주소는 항상 삭제)</label>
+      <label class="check-label"><input type="checkbox" id="optGrades" checked /> [성적] 페이지에 입력한 <b>올해 점수·반평균</b> 함께 넣기</label>
+      <label class="check-label"><input type="checkbox" id="optRecords" checked /> [학생·상담] 페이지의 <b>최근 상담 기록</b> 함께 넣기</label>
+
+      <details style="margin-top:14px">
+        <summary class="det-sum">보내기 전에 확인하기 — 실제로 전송될 내용 <span class="tag" id="promptLen">0자</span></summary>
+        <textarea id="promptView" rows="12" style="margin-top:10px;font-size:.82rem" readonly></textarea>
+        <p class="note">이 글이 교내 AI 서버로 그대로 전송됩니다. 남기고 싶지 않은 내용이 보이면 위 영역 선택을 줄여 주세요.</p>
+      </details>
+
+      <div class="row" style="flex-wrap:wrap;margin-top:14px">
+        <button class="btn" id="genBtn">✨ 상담 자료 만들기</button>
+        <button class="btn btn-danger" id="genStop" hidden>■ 중단</button>
+        <span class="save-status" id="genStatus" style="text-align:left"></span>
+      </div>
+    </section>
+
+    <!-- ══════ 4. 결과 ══════ -->
+    <section class="card" id="outCard" hidden>
+      <h2 class="card-title">상담 자료 초안 <span class="tag" id="outWho"></span></h2>
+      <p class="warn-box">⚠️ AI가 만든 <b>초안</b>입니다. 사실 관계와 표현을 선생님이 반드시 확인·수정한 뒤 사용해 주세요.
+        생기부에 없는 내용이 섞여 있을 수 있습니다.</p>
+      <div class="prose" id="outBody"></div>
+      <div class="row" style="flex-wrap:wrap;margin-top:16px" id="outTools" hidden>
+        <button class="btn btn-ghost" id="outCopy">📋 복사</button>
+        <button class="btn btn-ghost" id="outPrint">🖨️ 인쇄 · PDF 저장</button>
+        <button class="btn btn-ghost" id="outSave">🗂️ 상담 기록으로 저장</button>
+        <span class="save-status" id="outStatus" style="text-align:left"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="card-title">🔒 개인정보 안내</h2>
+      <ul class="link-list">
+        <li>생기부 원문은 <b>브라우저 메모리에만</b> 있다가 페이지를 닫으면 사라집니다. 저장되지 않습니다.</li>
+        <li>분석 요청은 위에 입력한 <b>교내 서버 주소로만</b> 전송됩니다. 외부 클라우드 AI는 사용하지 않습니다.</li>
+        <li>주민등록번호·연락처·주소·이메일은 전송 전에 <b>항상 자동으로 지워집니다.</b></li>
+        <li>만들어진 초안을 &lsquo;상담 기록으로 저장&rsquo;하면 이 컴퓨터의 브라우저에 남습니다. 공용 PC에서는 대시보드의 <b>전체 초기화</b>를 눌러 주세요.</li>
+        <li>생기부는 「교육관계법」상 보호되는 자료입니다. 학교 정보보안 지침과 담당자 안내를 함께 따라 주세요.</li>
+      </ul>
+    </section>
+
+    <footer class="foot"><span><span class="js-class">우리 반</span> 관리 콘솔 · 분석은 교내 서버에서만 이루어집니다</span></footer>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
+  <script src="ai.js"></script>
+  <script src="saenggibu.js"></script>
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const load = (k, fb) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch { return fb; } };
+      const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+      const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const flash = (el, msg, ms) => { el.textContent = msg; if (ms !== 0) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, ms || 4000); };
+
+      // 불러온 생기부는 메모리에만 둔다 (localStorage에 넣지 않음)
+      let students = [];
+      let picked = Saenggibu.CORE.slice();
+      let lastOutput = '';
+      let controller = null;
+
+      /* ══════════ 1. 서버 연결 ══════════ */
+      function fillSettings() {
+        const s = LocalAI.getSettings();
+        $('aiBase').value = s.base;
+        $('aiApi').value = s.api;
+        $('aiTemp').value = s.temp;
+        $('aiMax').value = s.maxTokens;
+        $('aiTimeout').value = s.timeout;
+        if (s.model) $('aiModel').innerHTML = `<option value="${esc(s.model)}">${esc(s.model)}</option>`;
+        checkMixed();
+      }
+      function readSettings() {
+        return {
+          base: $('aiBase').value.trim(),
+          api: $('aiApi').value,
+          model: $('aiModel').value,
+          temp: Number($('aiTemp').value) || 0.3,
+          maxTokens: Number($('aiMax').value) || 1600,
+          timeout: Number($('aiTimeout').value) || 180,
+        };
+      }
+      function persist() { LocalAI.saveSettings(readSettings()); }
+
+      function setState(state, text) {
+        $('aiDot').dataset.state = state;   // off | ok | busy | bad
+        $('aiState').textContent = text;
+      }
+      function checkMixed() {
+        const w = LocalAI.mixedContentWarning($('aiBase').value);
+        $('aiMixed').hidden = !w;
+        $('aiMixed').textContent = w ? '⚠️ ' + w : '';
+      }
+      $('aiBase').addEventListener('input', checkMixed);
+
+      $('aiSave').addEventListener('click', () => { persist(); flash($('aiStatus'), '✓ 저장했습니다'); });
+
+      $('aiRefresh').addEventListener('click', async () => {
+        persist();
+        setState('busy', '모델 목록 확인 중…');
+        flash($('aiStatus'), '', 0);
+        try {
+          const { api, models } = await LocalAI.listModels(LocalAI.getSettings());
+          const cur = LocalAI.getSettings().model;
+          $('aiModel').innerHTML = models.map((m) => `<option value="${esc(m)}"${m === cur ? ' selected' : ''}>${esc(m)}</option>`).join('')
+            || '<option value="">(설치된 모델 없음)</option>';
+          persist();
+          setState('ok', `모델 ${models.length}개 · ${api === 'openai' ? 'OpenAI 호환' : 'Ollama'} 규격`);
+          flash($('aiStatus'), '✓ 목록을 가져왔습니다');
+        } catch (e) {
+          setState('bad', '연결 실패');
+          flash($('aiStatus'), '✕ ' + e.message, 12000);
+        }
+      });
+
+      $('aiTest').addEventListener('click', async () => {
+        persist();
+        setState('busy', '연결 확인 중…');
+        flash($('aiStatus'), '', 0);
+        try {
+          const r = await LocalAI.testConnection();
+          if (!r.tried) {
+            setState('ok', '서버 연결됨 — 모델을 골라 주세요');
+            flash($('aiStatus'), `✓ 서버 연결됨 (모델 ${r.models.length}개). 사용할 모델을 선택해 주세요.`, 8000);
+          } else {
+            setState('ok', '사용 준비 완료');
+            flash($('aiStatus'), `✓ 연결 성공 — 모델 응답: “${r.reply}”`, 8000);
+          }
+        } catch (e) {
+          setState('bad', '연결 실패');
+          flash($('aiStatus'), '✕ ' + e.message, 15000);
+        }
+      });
+
+      $('aiModel').addEventListener('change', persist);
+      ['aiApi', 'aiTemp', 'aiMax', 'aiTimeout'].forEach((id) => $(id).addEventListener('change', persist));
+
+      /* ══════════ 2. 생기부 불러오기 ══════════ */
+      /* PDF 읽기 도구는 기본적으로 CDN에서 받아 오지만, 인터넷이 없는 학교망을 위해
+       * 같은 폴더의 vendor/ 사본도 찾아본다(젯슨 설치 가이드 참고). */
+      let pdfWorkerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const loadScript = (src) => new Promise((res, rej) => {
+        const el = document.createElement('script');
+        el.src = src;
+        el.onload = res;
+        el.onerror = () => rej(new Error(src));
+        document.head.appendChild(el);
+      });
+      async function ensurePdf() {
+        if (typeof pdfjsLib !== 'undefined') return true;
+        try {
+          await loadScript('vendor/pdf.min.js');
+          pdfWorkerSrc = 'vendor/pdf.worker.min.js';
+        } catch {}
+        return typeof pdfjsLib !== 'undefined';
+      }
+
+      async function pdfText(buf) {
+        if (!(await ensurePdf())) {
+          throw new Error('PDF 읽기 도구를 불러오지 못했습니다. 인터넷 연결이 없는 환경이라면 생기부 내용을 복사해 “붙여넣기”로 사용해 주세요.');
+        }
+        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
+        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+        const pages = [];
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const tc = await page.getTextContent();
+          // 글자 조각을 y좌표 기준으로 줄로 묶어 준다 (표 형태를 최대한 살리기 위함)
+          const lines = new Map();
+          tc.items.forEach((it) => {
+            const y = Math.round(it.transform[5]);
+            if (!lines.has(y)) lines.set(y, []);
+            lines.get(y).push(it.str);
+          });
+          pages.push([...lines.entries()].sort((a, b) => b[0] - a[0]).map(([, v]) => v.join(' ')).join('\n'));
+        }
+        return pages.join('\n\n');
+      }
+
+      async function ingest(text, sourceName) {
+        const found = Saenggibu.parse(text);
+        if (!found.length) throw new Error('생기부 형식을 알아보지 못했습니다.');
+        found.forEach((st) => { st.source = sourceName; });
+        // 같은 이름이 다시 들어오면 덮어쓴다
+        found.forEach((st) => {
+          const i = students.findIndex((x) => x.name === st.name && st.nameFound);
+          if (i >= 0) students[i] = st; else students.push(st);
+        });
+        renderStudents();
+        return found.length;
+      }
+
+      $('sgbPick').addEventListener('click', () => $('sgbFile').click());
+      $('sgbFile').addEventListener('change', async (e) => {
+        const files = [...e.target.files];
+        e.target.value = '';
+        if (!files.length) return;
+        flash($('sgbStatus'), '읽는 중…', 0);
+        let total = 0;
+        try {
+          for (const f of files) {
+            let text;
+            if (/\.pdf$/i.test(f.name)) {
+              text = await pdfText(await f.arrayBuffer());
+              if (text.replace(/\s/g, '').length < 100) {
+                throw new Error(`“${f.name}”에서 글자를 찾지 못했습니다. 스캔한 이미지 PDF로 보입니다 — 내용을 복사해 “붙여넣기”로 사용해 주세요.`);
+              }
+            } else {
+              text = new TextDecoder('utf-8').decode(await f.arrayBuffer());
+            }
+            total += await ingest(text, f.name);
+          }
+          flash($('sgbStatus'), `✓ 학생 ${total}명을 불러왔습니다`);
+        } catch (err) {
+          flash($('sgbStatus'), '✕ ' + err.message, 15000);
+        }
+      });
+
+      $('sgbPasteBtn').addEventListener('click', async () => {
+        const text = $('sgbPaste').value.trim();
+        if (!text) { flash($('sgbStatus'), '붙여넣은 내용이 없습니다'); return; }
+        try {
+          const n = await ingest(text, '붙여넣기');
+          $('sgbPaste').value = '';
+          flash($('sgbStatus'), `✓ 학생 ${n}명을 불러왔습니다`);
+        } catch (err) {
+          flash($('sgbStatus'), '✕ ' + err.message, 12000);
+        }
+      });
+
+      function renderStudents() {
+        $('sgbEmpty').hidden = students.length > 0;
+        $('sgbChips').innerHTML = students.map((st) => {
+          const bits = [];
+          if (st.number) bits.push(st.number + '번');
+          bits.push(`영역 ${st.sectionNames.length}`);
+          if (st.subjects.length) bits.push(`과목 ${st.subjects.length}`);
+          return `<span class="chip">${esc(st.name)} <b class="chip-sub">${esc(bits.join(' · '))}</b></span>`;
+        }).join('');
+
+        const sel = $('genStudent');
+        const keep = sel.value;
+        sel.innerHTML = students.length
+          ? students.map((st) => `<option value="${esc(st.id)}">${esc(st.name)}</option>`).join('')
+          : '<option value="">— 먼저 생기부를 불러오세요 —</option>';
+        if (students.some((s) => s.id === keep)) sel.value = keep;
+        renderSecChips();
+        updatePreview();
+      }
+
+      /* ══════════ 3. 영역 선택 · 프롬프트 ══════════ */
+      function currentStudent() {
+        return students.find((s) => s.id === $('genStudent').value) || null;
+      }
+      function renderSecChips() {
+        const st = currentStudent();
+        const avail = st ? st.sectionNames : [];
+        if (!avail.length) {
+          $('secChips').innerHTML = '';
+          $('secNote').textContent = st
+            ? '영역을 나누지 못해 생기부 원문 앞부분을 그대로 보냅니다.'
+            : '학생을 선택하면 이 생기부에 들어 있는 영역이 표시됩니다.';
+          return;
+        }
+        picked = picked.filter((p) => avail.includes(p));
+        if (!picked.length) picked = avail.filter((a) => Saenggibu.CORE.includes(a));
+        if (!picked.length) picked = avail.slice();
+        $('secChips').innerHTML = avail.map((n) => {
+          const on = picked.includes(n);
+          const len = st.sections[n].length;
+          return `<button type="button" class="chip chip-btn chip-sel${on ? ' on' : ''}" data-sec="${esc(n)}">${on ? '✓ ' : ''}${esc(n)} <b class="chip-sub">${len.toLocaleString()}자</b></button>`;
+        }).join('');
+        $('secNote').textContent = '영역을 적게 넣을수록 빠르고, 많이 넣을수록 자세해집니다.';
+      }
+      $('secChips').addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-sec]');
+        if (!btn) return;
+        const n = btn.dataset.sec;
+        picked = picked.includes(n) ? picked.filter((p) => p !== n) : picked.concat(n);
+        renderSecChips();
+        updatePreview();
+      });
+
+      // ── 성적·상담 기록 요약(같은 콘솔의 다른 페이지에서 가져옴) ──
+      function gradeLines(name) {
+        const out = [];
+        const gdb = load('grades-data', { exams: [] });
+        (gdb.exams || []).forEach((ex) => {
+          const row = (ex.scores || {})[name];
+          if (!row) return;
+          const parts = Object.entries(row).filter(([, v]) => typeof v === 'number').map(([sub, v]) => {
+            const vals = Object.values(ex.scores).map((r) => r[sub]).filter((x) => typeof x === 'number');
+            const avg = (ex.avg && isFinite(ex.avg[sub])) ? ex.avg[sub]
+              : (vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null);
+            return avg === null ? `${sub} ${v}점` : `${sub} ${v}점(반평균 ${avg.toFixed(1)})`;
+          });
+          if (parts.length) out.push(`- 올해 ${ex.name}: ${parts.join(', ')}`);
+        });
+        const prev = load('counsel-grades', {})[name] || [];
+        prev.forEach((g) => {
+          const parts = Object.entries(g.scores || {}).filter(([, v]) => typeof v === 'number')
+            .map(([sub, v]) => `${sub} ${v}점`);
+          if (parts.length) out.push(`- ${g.exam}: ${parts.join(', ')}`);
+        });
+        return out;
+      }
+      function recordLines(name) {
+        return load('counsel-records', [])
+          .filter((r) => r.name === name)
+          .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+          .slice(0, 6)
+          .map((r) => `- ${r.date} [${r.cat}] ${String(r.text).replace(/\s+/g, ' ').slice(0, 160)}`);
+      }
+
+      const PURPOSE = {
+        '정기': '학기 중 정기 학부모 상담입니다. 학교생활 전반을 고르게 다루고, 학부모가 궁금해할 만한 점을 미리 짚어 주세요.',
+        '학업': '학업·성적 상담입니다. 과목별 강약점과 공부 습관, 가정에서 도울 수 있는 구체적 방법에 무게를 두세요.',
+        '진로': '진로·진학 상담입니다. 생기부에 드러난 관심사·활동·희망 진로를 연결해 다음 단계 선택지를 제시하세요.',
+        '생활': '생활·교우관계 상담입니다. 관계와 태도를 조심스럽게 다루고, 낙인이 되지 않는 표현을 쓰세요.',
+        '종합': '학기말 종합 총평입니다. 한 학기 동안의 성장 흐름을 정리하고 다음 학기 목표를 제안하세요.',
+      };
+
+      const SYSTEM = [
+        '당신은 한국 초·중·고등학교 담임교사의 학부모 상담 준비를 돕는 보조자입니다.',
+        '',
+        '반드시 지킬 것:',
+        '1. 제공된 생기부 발췌·성적·상담 기록에 적힌 내용만 근거로 삼습니다. 자료에 없는 사실을 만들어 내지 마세요.',
+        '2. 확인할 수 없는 항목은 추측하지 말고 "기록에 없음"이라고 적으세요.',
+        '3. 의학적·심리적 진단(예: ADHD, 우울증)이나 장애 추정 표현을 절대 쓰지 마세요.',
+        '4. 낙인이 될 표현, 다른 학생과의 서열 비교, 단정적인 평가를 피하세요.',
+        '5. 부족한 점은 "고칠 점"이 아니라 "함께 도우면 좋아질 구체적 행동"으로 바꾸어 쓰세요.',
+        '6. 학부모가 읽거나 들을 문장은 정중한 존댓말로 씁니다.',
+        '7. 한국어로만 답합니다. 마크다운 제목(##)과 목록을 사용하세요.',
+      ].join('\n');
+
+      function buildPrompt() {
+        const st = currentStudent();
+        if (!st) return '';
+        const mask = $('optMask').checked;
+        const who = mask ? '○○○' : st.name;
+        const purpose = $('genPurpose').value;
+
+        const parts = [];
+        parts.push(`## 상담 상황\n- 학생: ${who}${st.number ? ` (${st.number}번)` : ''}\n- 상담 목적: ${$('genPurpose').selectedOptions[0].textContent}\n- ${PURPOSE[purpose]}`);
+        parts.push(`## 생기부 발췌\n${Saenggibu.excerpt(st, picked, { maskName: mask })}`);
+
+        if (st.attendance) {
+          const a = Object.entries(st.attendance).filter(([, v]) => v !== null).map(([k, v]) => `${k} ${v}`).join(', ');
+          if (a) parts.push(`## 출결 요약\n${a}`);
+        }
+        if (st.subjects.length) {
+          parts.push('## 생기부에서 읽어 낸 교과 성적\n' + st.subjects
+            .map((s) => `- ${s.subject}: 원점수 ${s.score} / 과목평균 ${s.avg}${s.level ? ` / 성취도 ${s.level}` : ''}`).join('\n'));
+        }
+        if ($('optGrades').checked) {
+          const g = gradeLines(st.name);
+          if (g.length) parts.push('## 담임이 입력한 성적 자료\n' + g.join('\n'));
+        }
+        if ($('optRecords').checked) {
+          const r = recordLines(st.name);
+          if (r.length) {
+            const body = mask ? r.map((line) => line.split(st.name).join('○○○')) : r;
+            parts.push('## 그동안의 상담 기록\n' + body.join('\n'));
+          }
+        }
+
+        parts.push([
+          '## 만들어 주세요',
+          '아래 제목을 그대로 써서 상담 자료를 작성하세요.',
+          '',
+          '## 한눈에 보기',
+          '(3줄 이내로 이 학생을 요약)',
+          '',
+          '## 강점',
+          '(생기부 문구를 근거로 3~4가지. 각 항목에 근거가 된 활동·기록을 함께 적기)',
+          '',
+          '## 함께 지켜볼 점',
+          '(2~3가지. 문제 지적이 아니라 도움 방향으로 서술)',
+          '',
+          '## 학습·성적 이야기',
+          '(자료에 성적이 있으면 과목별 강약점과 흐름을. 없으면 "성적 자료가 없어 생기부 서술만으로 정리합니다"라고 밝히기)',
+          '',
+          '## 학부모님께 드릴 말씀',
+          '(선생님이 그대로 읽어도 되는 5~8문장의 존댓말 원고. 강점 → 지켜볼 점 → 협조 요청 순서)',
+          '',
+          '## 예상 질문과 답변',
+          '(학부모가 물을 만한 질문 3개와 교사의 답변 예시)',
+          '',
+          '## 가정에서 도와주실 수 있는 일',
+          '(집에서 실천 가능한 구체적 제안 3가지)',
+          '',
+          '## 다음 상담까지 확인할 것',
+          '(담임이 직접 챙길 항목 2~3가지)',
+        ].join('\n'));
+
+        return parts.join('\n\n');
+      }
+
+      function updatePreview() {
+        const p = buildPrompt();
+        $('promptView').value = p;
+        $('promptLen').textContent = p.length.toLocaleString() + '자';
+      }
+      ['genStudent', 'genPurpose', 'optMask', 'optGrades', 'optRecords'].forEach((id) => {
+        $(id).addEventListener('change', () => {
+          if (id === 'genStudent') renderSecChips();
+          updatePreview();
+        });
+      });
+
+      /* ══════════ 4. 생성 ══════════ */
+      // 아주 작은 마크다운 렌더러 — 제목·굵게·목록·문단만 처리
+      function md(src) {
+        const lines = esc(src).split('\n');
+        let html = '', list = null;
+        const closeList = () => { if (list) { html += `</${list}>`; list = null; } };
+        const inline = (s) => s
+          .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+          .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>');
+        lines.forEach((raw) => {
+          const line = raw.trimEnd();
+          let m;
+          if (!line.trim()) { closeList(); return; }
+          if ((m = line.match(/^(#{1,4})\s+(.*)$/))) {
+            closeList();
+            const lvl = Math.min(m[1].length + 1, 5);
+            html += `<h${lvl}>${inline(m[2])}</h${lvl}>`;
+          } else if ((m = line.match(/^\s*[-*·]\s+(.*)$/))) {
+            if (list !== 'ul') { closeList(); html += '<ul>'; list = 'ul'; }
+            html += `<li>${inline(m[1])}</li>`;
+          } else if ((m = line.match(/^\s*\d+[.)]\s+(.*)$/))) {
+            if (list !== 'ol') { closeList(); html += '<ol>'; list = 'ol'; }
+            html += `<li>${inline(m[1])}</li>`;
+          } else {
+            closeList();
+            html += `<p>${inline(line)}</p>`;
+          }
+        });
+        closeList();
+        return html;
+      }
+
+      $('genBtn').addEventListener('click', async () => {
+        const st = currentStudent();
+        if (!st) { flash($('genStatus'), '먼저 생기부를 불러오고 학생을 선택해 주세요'); return; }
+        const s = LocalAI.getSettings();
+        if (!s.base) { flash($('genStatus'), '1번에서 서버 주소를 입력해 주세요'); return; }
+        if (!s.model) { flash($('genStatus'), '1번에서 사용할 모델을 선택해 주세요'); return; }
+
+        const prompt = buildPrompt();
+        controller = new AbortController();
+        lastOutput = '';
+
+        $('outCard').hidden = false;
+        $('outTools').hidden = true;
+        $('outWho').textContent = st.name + ' · ' + $('genPurpose').selectedOptions[0].textContent;
+        $('outBody').innerHTML = '<p class="empty-hint">교내 서버에서 생성 중입니다… 모델 크기에 따라 1~3분 걸릴 수 있어요.</p>';
+        $('genBtn').disabled = true;
+        $('genStop').hidden = false;
+        setState('busy', '생성 중…');
+        flash($('genStatus'), '', 0);
+        const t0 = Date.now();
+
+        try {
+          const text = await LocalAI.chat({
+            system: SYSTEM,
+            prompt,
+            signal: controller.signal,
+            onDelta: (_, full) => { $('outBody').innerHTML = md(full); },
+          });
+          lastOutput = text;
+          $('outBody').innerHTML = md(text) || '<p class="empty-hint">모델이 빈 응답을 보냈습니다. 모델을 바꾸거나 넣는 영역을 줄여 보세요.</p>';
+          $('outTools').hidden = !text;
+          setState('ok', '사용 준비 완료');
+          flash($('genStatus'), `✓ 완료 (${Math.round((Date.now() - t0) / 1000)}초)`, 8000);
+        } catch (e) {
+          if (controller.signal.aborted) {
+            setState('ok', '중단됨');
+            flash($('genStatus'), '중단했습니다', 5000);
+            if (lastOutput) $('outTools').hidden = false;
+          } else {
+            setState('bad', '오류');
+            $('outBody').innerHTML = `<p class="empty-hint">${esc(e.message)}</p>`;
+            flash($('genStatus'), '✕ ' + e.message, 15000);
+          }
+        } finally {
+          $('genBtn').disabled = false;
+          $('genStop').hidden = true;
+          controller = null;
+        }
+      });
+
+      $('genStop').addEventListener('click', () => { if (controller) controller.abort(); });
+
+      /* ══════════ 결과 활용 ══════════ */
+      $('outCopy').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(lastOutput); flash($('outStatus'), '✓ 복사했습니다'); }
+        catch { flash($('outStatus'), '복사에 실패했습니다. 글을 직접 선택해 주세요.'); }
+      });
+
+      $('outPrint').addEventListener('click', () => {
+        const st = currentStudent();
+        const cls = (function () { try { return localStorage.getItem('console-class-name') || ''; } catch { return ''; } })();
+        const w = window.open('', '_blank');
+        if (!w) { flash($('outStatus'), '팝업이 차단되었습니다. 브라우저에서 허용해 주세요.'); return; }
+        w.document.write(
+          `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><title>${esc(st ? st.name : '')} 상담 자료</title>` +
+          '<style>body{font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;line-height:1.7;max-width:720px;margin:32px auto;padding:0 20px;color:#0f172a}' +
+          'h1{font-size:1.4rem;border-bottom:2px solid #4f46e5;padding-bottom:8px}' +
+          'h2,h3{font-size:1.05rem;margin-top:26px;color:#4338ca;border-bottom:1px solid #e2e8f0;padding-bottom:4px}' +
+          'h4,h5{font-size:.98rem;margin-top:18px}li{margin:4px 0}.meta{color:#64748b;font-size:.85rem}' +
+          '.warn{background:#fffbeb;color:#92400e;padding:10px 14px;border-radius:8px;font-size:.85rem}</style></head><body>' +
+          `<h1>${esc(st ? st.name : '')} 학부모 상담 자료</h1>` +
+          `<p class="meta">${esc(cls)} · ${esc($('genPurpose').selectedOptions[0].textContent)} · ${new Date().toLocaleDateString('ko-KR')}</p>` +
+          '<p class="warn">AI가 만든 초안을 담임교사가 검토한 문서입니다. 생기부 원문을 함께 확인해 주세요.</p>' +
+          md(lastOutput) + '</body></html>'
+        );
+        w.document.close();
+        w.focus();
+        setTimeout(() => w.print(), 300);
+      });
+
+      $('outSave').addEventListener('click', () => {
+        const st = currentStudent();
+        if (!st || !lastOutput) return;
+        if (!st.nameFound) {
+          if (!confirm('생기부에서 학생 이름을 찾지 못해 "' + st.name + '"으로 저장됩니다. 계속할까요?')) return;
+        }
+        const CAT = { '정기': '생활', '학업': '학업', '진로': '진로', '생활': '교우관계', '종합': '학업' };
+        const records = load('counsel-records', []);
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        records.push({
+          id: Date.now(),
+          name: st.name,
+          date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+          cat: CAT[$('genPurpose').value] || '생활',
+          text: `[생기부 분석 초안 · ${$('genPurpose').selectedOptions[0].textContent}]\n` + lastOutput,
+          next: '',
+        });
+        save('counsel-records', records);
+        flash($('outStatus'), '✓ 상담 기록에 저장했습니다 — [학생·상담] 페이지에서 볼 수 있어요', 8000);
+      });
+
+      /* ══════════ 시작 ══════════ */
+      fillSettings();
+      renderStudents();
+
+      // PDF 도구를 못 쓰는 환경이면 미리 알리고 붙여넣기 칸을 열어 준다
+      window.addEventListener('load', async () => {
+        if (await ensurePdf()) return;
+        $('pdfWarn').hidden = false;
+        $('pasteDetails').open = true;
+      });
+    })();
+  </script>
+  <script src="console.js"></script>
+</body>
+</html>
