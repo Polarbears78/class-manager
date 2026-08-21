@@ -116,6 +116,7 @@ textarea { resize: vertical; }
   transition: background .12s ease, transform .12s ease;
 }
 .btn:hover { background: var(--accent-dark); }
+a.btn { text-decoration: none; display: inline-block; }   /* 링크를 버튼처럼 쓸 때 */
 .btn:active { transform: scale(.98); }
 .btn-block { display: block; width: 100%; text-align: center; }
 .btn-danger { background: var(--danger); }
