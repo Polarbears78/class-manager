@@ -96,9 +96,17 @@
           <textarea id="hNote" rows="3" placeholder="한 학기 동안 지켜본 소감을 짧게 적어 주세요."></textarea>
         </div>
 
-        <label class="check-label"><input type="checkbox" id="hChart" checked /> 성적 그래프 넣기 <span class="opt">(본인 점수 · 반 평균)</span></label>
+        <label class="check-label"><input type="checkbox" id="hChart" checked /> 성적 넣기</label>
+        <div class="field" id="modeField" style="margin-top:10px">
+          <label for="hMode">성적 표시 방법</label>
+          <select id="hMode">
+            <option value="auto">자동 — 시험이 2회 이상이면 변화 표·그래프</option>
+            <option value="trend">과목별 변화 점수표 + 추이 그래프</option>
+            <option value="bar">한 시험만 — 본인 점수 · 반 평균 막대</option>
+          </select>
+        </div>
         <div class="field" id="examField" style="margin-top:10px">
-          <label for="hExam">그래프에 쓸 시험</label>
+          <label for="hExam">막대에 쓸 시험</label>
           <select id="hExam"><option value="">— 성적 자료가 없습니다 —</option></select>
         </div>
 
@@ -225,6 +233,7 @@
         $('hNote').value = d.note || '';
         if (typeof d.chart === 'boolean') $('hChart').checked = d.chart;
         if (typeof d.attend === 'boolean') $('hAttend').checked = d.attend;
+        if (d.mode) $('hMode').value = d.mode;
         if (d.exam && [...$('hExam').options].some((o) => o.value === d.exam)) $('hExam').value = d.exam;
       }
       let saveTimer = null;
@@ -237,6 +246,7 @@
           note: $('hNote').value,
           chart: $('hChart').checked,
           attend: $('hAttend').checked,
+          mode: $('hMode').value,
           exam: $('hExam').value,
         };
         save(DRAFT_KEY, drafts);
@@ -248,7 +258,7 @@
         saveTimer = setTimeout(saveDraft, 400);
       }
       FIELDS.forEach((id) => $(id).addEventListener('input', touched));
-      ['hChart', 'hAttend', 'hExam'].forEach((id) => $(id).addEventListener('change', touched));
+      ['hChart', 'hAttend', 'hExam', 'hMode'].forEach((id) => $(id).addEventListener('change', touched));
       $('hStudent').addEventListener('change', () => { loadDraft(); render(); });
 
       $('hReset').addEventListener('click', () => {
@@ -305,8 +315,124 @@
       }
       $('hPull').addEventListener('click', () => pull(false));
 
-      /* ══════════ 성적 그래프 (인쇄에 안전한 인라인 SVG) ══════════ */
-      function chartSvg(name, examId) {
+      /* ══════════ 성적 ══════════
+       * 인쇄에서 배경색이 빠져도 읽히도록 인라인 SVG로 그리고,
+       * 정확한 값은 바로 아래 점수표가 싣는다. 표의 색 표식이 그래프의 범례를 겸한다. */
+
+      const SERIES = 8;   // admin.css의 --s1 … --s8
+
+      // 이 학생 점수가 들어 있는 시험만 입력 순서대로
+      function examsWith(name) {
+        const gdb = load('grades-data', { exams: [] });
+        return (gdb.exams || []).filter((e) => {
+          const row = (e.scores || {})[name];
+          return row && Object.values(row).some((v) => typeof v === 'number');
+        });
+      }
+
+      // 과목 반평균 — 저장된 값이 있으면 그것을, 없으면 반 전체 점수로 계산
+      function classAvg(exam, sub) {
+        if (exam.avg && isFinite(exam.avg[sub])) return exam.avg[sub];
+        const vals = Object.values(exam.scores || {}).map((r) => r[sub]).filter((x) => typeof x === 'number');
+        return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+      }
+
+      // 여러 시험에 걸친 과목 목록 (처음 나온 순서 유지)
+      function subjectsOf(name, exams) {
+        const out = [];
+        exams.forEach((e) => Object.keys(e.scores[name] || {}).forEach((sub) => {
+          if (typeof e.scores[name][sub] === 'number' && !out.includes(sub)) out.push(sub);
+        }));
+        return out;
+      }
+
+      // 변화 표·그래프를 쓸 상황인가 (시험이 2회 이상이어야 변화가 있다)
+      function usesTrend(name) {
+        const mode = $('hMode').value;
+        return mode !== 'bar' && examsWith(name).length >= 2;
+      }
+
+      /* 과목 × 시험 점수표 — 맨 오른쪽에 처음→마지막 변화 */
+      function scoreTable(name, exams, subs) {
+        let h = '<table class="score-table"><thead><tr><th>과목</th>';
+        exams.forEach((e) => { h += `<th>${esc(e.name)}</th>`; });
+        h += '<th>변화</th></tr></thead><tbody>';
+        subs.forEach((sub, i) => {
+          h += `<tr><th><span class="s-key" style="background:var(--s${(i % SERIES) + 1})"></span>${esc(sub)}</th>`;
+          const seen = [];
+          exams.forEach((e) => {
+            const v = (e.scores[name] || {})[sub];
+            if (typeof v !== 'number') { h += '<td class="s-none">—</td>'; return; }
+            seen.push(v);
+            const a = classAvg(e, sub);
+            h += `<td>${v}${a === null ? '' : `<small>반 ${a.toFixed(0)}</small>`}</td>`;
+          });
+          if (seen.length < 2) {
+            h += '<td class="s-none">—</td>';
+          } else {
+            const d = seen[seen.length - 1] - seen[0];
+            h += `<td class="s-delta${d > 0 ? ' up' : d < 0 ? ' down' : ''}">` +
+                 `${d > 0 ? '▲ +' + d : d < 0 ? '▼ ' + d : '– 0'}</td>`;
+          }
+          h += '</tr>';
+        });
+        return h + '</tbody></table>';
+      }
+
+      /* 과목별 추이 꺾은선 — 숫자는 표가 실으므로 끝점에 과목 이름만 붙인다 */
+      function trendSvg(name, exams, subs) {
+        const W = 560, H = 200, L = 36, R = 96, T = 14, B = 28;
+        let lo = 100, hi = 0, any = false;
+        subs.forEach((sub) => exams.forEach((e) => {
+          const v = (e.scores[name] || {})[sub];
+          if (typeof v === 'number') { lo = Math.min(lo, v); hi = Math.max(hi, v); any = true; }
+        }));
+        if (!any) return '';
+        lo = Math.max(0, Math.floor((lo - 5) / 10) * 10);
+        hi = Math.min(100, Math.ceil((hi + 5) / 10) * 10);
+        if (hi - lo < 20) { lo = Math.max(0, hi - 20); hi = Math.min(100, lo + 20); }
+
+        const px = (i) => L + (exams.length < 2 ? (W - L - R) / 2 : i * (W - L - R) / (exams.length - 1));
+        const py = (v) => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+
+        let g = `<svg viewBox="0 0 ${W} ${H}" class="trend-svg" role="img" aria-label="과목별 점수 추이">`;
+        // 가로 눈금은 아래·가운데·위 세 줄만 — 그래프가 조용해야 선이 보인다
+        [...new Set([lo, Math.round((lo + hi) / 2), hi])].forEach((v) => {
+          g += `<line class="t-grid" x1="${L}" y1="${py(v)}" x2="${W - R}" y2="${py(v)}"/>`;
+          g += `<text class="t-ax" x="${L - 6}" y="${py(v) + 4}" text-anchor="end">${v}</text>`;
+        });
+        exams.forEach((e, i) => {
+          g += `<text class="t-ax" x="${px(i)}" y="${H - 8}" text-anchor="middle">${esc(e.name)}</text>`;
+        });
+
+        const ends = [];
+        subs.forEach((sub, si) => {
+          const color = `var(--s${(si % SERIES) + 1})`;
+          const pts = [];
+          exams.forEach((e, i) => {
+            const v = (e.scores[name] || {})[sub];
+            if (typeof v === 'number') pts.push([px(i), py(v)]);
+          });
+          if (!pts.length) return;
+          if (pts.length > 1) {
+            g += `<polyline class="t-line" stroke="${color}" points="${pts.map((p) => p.join(',')).join(' ')}"/>`;
+          }
+          pts.forEach(([x, y]) => { g += `<circle class="t-dot" cx="${x}" cy="${y}" r="4" fill="${color}"/>`; });
+          ends.push({ sub, x: pts[pts.length - 1][0], y: pts[pts.length - 1][1] });
+        });
+        // 끝점 이름은 서로 붙지 않을 때만 — 겹치면 아래 표가 대신 알려 준다
+        ends.sort((a, b) => a.y - b.y);
+        let lastY = -99;
+        ends.forEach((e) => {
+          if (e.y - lastY < 13) return;
+          lastY = e.y;
+          g += `<text class="t-end" x="${e.x + 9}" y="${e.y + 4}">${esc(e.sub)}</text>`;
+        });
+        return g + '</svg>';
+      }
+
+      /* 시험 한 회만 — 본인 점수와 반 평균 막대 */
+      function barSvg(name, examId) {
         const gdb = load('grades-data', { exams: [] });
         const exam = (gdb.exams || []).find((e) => String(e.id) === String(examId));
         if (!exam) return { html: '', examName: '' };
@@ -350,6 +476,22 @@
         return { html: svg, examName: exam.name };
       }
 
+      /* 성적 칸 전체 — 표시 방법에 따라 골라 그린다 */
+      function gradeBlock(name) {
+        if (usesTrend(name)) {
+          const exams = examsWith(name);
+          const subs = subjectsOf(name, exams);
+          if (subs.length) {
+            return {
+              html: trendSvg(name, exams, subs) + scoreTable(name, exams, subs),
+              caption: `${exams[0].name} → ${exams[exams.length - 1].name}`,
+            };
+          }
+        }
+        const { html, examName } = barSvg(name, $('hExam').value);
+        return { html, caption: examName };
+      }
+
       /* ══════════ 출결 ══════════
        * report.html이 저장한 초안 안의 '출결 요약' 문장을 재사용한다. */
       function attendText(name) {
@@ -387,9 +529,9 @@
 
         let chartOn = false;
         if ($('hChart').checked && name) {
-          const { html, examName } = chartSvg(name, $('hExam').value);
+          const { html, caption } = gradeBlock(name);
           $('pChart').innerHTML = html;
-          $('pExamName').textContent = examName ? `(${examName})` : '';
+          $('pExamName').textContent = caption ? `(${caption})` : '';
           chartOn = !!html;
         }
         $('secChart').hidden = !chartOn;
@@ -402,7 +544,9 @@
         $('pFoot').innerHTML = foot.map((x) => `<span>${esc(x)}</span>`).join('');
         $('pFoot').hidden = !foot.length;
 
-        $('examField').hidden = !$('hChart').checked;
+        // 막대를 그릴 때만 시험 고르는 칸이 필요하다
+        $('modeField').hidden = !$('hChart').checked;
+        $('examField').hidden = !$('hChart').checked || (!!name && usesTrend(name));
       }
 
       $('hPrint').addEventListener('click', () => window.print());
