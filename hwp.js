@@ -163,6 +163,29 @@
     return '';
   }
 
+  // 그림의 가로·세로. 낱글자 조각과 문장 덩어리를 가려내는 데 쓴다
+  function sizeOf(b, mime) {
+    try {
+      if (mime === 'image/png') {
+        const dv = new DataView(b.buffer, b.byteOffset, b.length);
+        return { w: dv.getUint32(16), h: dv.getUint32(20) };
+      }
+      if (mime === 'image/jpeg') {
+        let i = 2;
+        while (i + 9 < b.length) {
+          if (b[i] !== 0xff) { i++; continue; }
+          const m = b[i + 1];
+          // SOF0~SOF15 (재시작·기타 표식 제외)
+          if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) {
+            return { h: (b[i + 5] << 8) | b[i + 6], w: (b[i + 7] << 8) | b[i + 8] };
+          }
+          i += 2 + ((b[i + 2] << 8) | b[i + 3]);
+        }
+      }
+    } catch { /* 알 수 없으면 0 */ }
+    return { w: 0, h: 0 };
+  }
+
   /**
    * .hwp 를 읽어 그림을 문서 순서대로 돌려준다.
    * @param {ArrayBuffer} buf
@@ -205,18 +228,28 @@
         if (bytes && !mimeOf(bytes)) {
           try { bytes = await inflateRaw(bytes); } catch { /* 원본 그대로 */ }
         }
-        if (!bytes || !mimeOf(bytes)) continue;
-        images.push({ section: s, order: images.length, id, mime: mimeOf(bytes), bytes, size: bytes.length });
+        const mime = mimeOf(bytes);
+        if (!bytes || !mime) continue;
+        const { w, h } = sizeOf(bytes, mime);
+        images.push({ section: s, order: images.length, id, mime, bytes, size: bytes.length, w, h });
       }
     }
     return { compressed, sections: sections.length, images };
   }
 
-  /** 글자가 여러 줄 든 문장 덩어리만 (낱글자 조각 빼고) */
-  function paragraphs(images, minBytes) {
-    const cut = minBytes || 20000;
-    return images.filter((im) => im.size >= cut);
+  /**
+   * 글이 담긴 그림만 골라낸다.
+   *
+   * 나이스 생기부의 그림은 두 갈래다. 표 칸에 든 낱글자 조각(가로 20px 안팎)과,
+   * 세부능력·행동특성 같은 서술형 문장 덩어리(가로 1400px 안팎)다.
+   * 낱글자를 한 장씩 OCR에 보내면 느리기만 하고 잘 맞지도 않으므로,
+   * 가로 길이로 걸러 글줄이 든 그림만 넘긴다.
+   * (성적·출결 표는 [성적] 페이지에 직접 입력한 값을 쓴다.)
+   */
+  function textImages(images, minWidth) {
+    const cut = minWidth || 200;
+    return images.filter((im) => im.w >= cut);
   }
 
-  global.HwpReader = { read, paragraphs, records, readOle };
+  global.HwpReader = { read, textImages, records, readOle, sizeOf };
 })(typeof window !== 'undefined' ? window : globalThis);
