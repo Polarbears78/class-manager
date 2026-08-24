@@ -456,3 +456,8 @@ button.seat:hover { transform: translateY(-1px); }
   .manage-grid .card { margin-bottom: 12px; }
   textarea, input, select { border: none; padding: 0; resize: none; }
 }
+
+/* OCR 진행 막대 — 그림에서 글자를 읽는 동안 어디쯤인지 보여 준다 */
+.ocr-bar { height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.ocr-bar span { display: block; height: 100%; width: 0;
+  background: var(--accent); border-radius: 999px; transition: width .25s ease; }

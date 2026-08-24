@@ -150,6 +150,61 @@ sudo ufw allow 8080/tcp
 
 ---
 
+## 5-2. 생기부를 읽으려면 OCR 서버가 필요합니다
+
+나이스 생기부는 위·변조를 막으려고 **글자를 모두 그림으로 찍어 냅니다.**
+한글(.hwp)로 받든 PDF로 받든 파일 안에 글자가 한 자도 없습니다.
+그래서 그림을 글자로 바꿔 줄 작은 서버를 젯슨에 하나 더 띄웁니다.
+모델 서버(11434)와는 **별개**이고 포트도 다릅니다(**8404**).
+
+```bash
+sudo apt update
+sudo apt install -y tesseract-ocr tesseract-ocr-kor
+tesseract --list-langs          # 목록에 kor 이 보여야 합니다
+```
+
+저장소 파일을 젯슨에 두고 실행합니다.
+
+```bash
+python3 ~/class-manager/jetson/ocr-server.py
+```
+
+`OCR 서버 시작: http://0.0.0.0:8404` 이 뜨면 됩니다.
+교사 PC 브라우저에서 `http://<젯슨IP>:8404/health` 를 열어
+`{"ok":true …}` 가 보이면 연결까지 확인된 것입니다.
+
+늘 켜져 있게 하려면:
+
+```bash
+sudo tee /etc/systemd/system/saenggibu-ocr.service >/dev/null <<EOF
+[Unit]
+Description=생기부 OCR 서버
+After=network.target
+[Service]
+ExecStart=/usr/bin/python3 $HOME/class-manager/jetson/ocr-server.py
+Restart=always
+User=$USER
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload && sudo systemctl enable --now saenggibu-ocr
+```
+
+방화벽을 쓰신다면 `sudo ufw allow 8404/tcp` 도 함께 실행하세요.
+콘솔에서는 [생기부 분석] → **고급 설정 → OCR 서버 주소**에 넣습니다.
+비워 두면 모델 서버와 같은 기기의 8404번으로 알아서 찾아갑니다.
+
+### 알아 두실 점
+
+| | |
+|---|---|
+| 정확도 | **95% 안팎** — 스무 자에 한 자쯤 틀립니다(`통제`→`동제` 같은 혼동). 뜻을 파악하고 상담 자료를 만들기에는 충분하지만 **원문 그대로 인용할 수준은 아닙니다.** 콘솔이 읽어 낸 글을 확인 칸에 담아 주니 고친 뒤 쓰세요 |
+| 걸리는 시간 | 학생 한 명당 **2~4분** (글줄 그림 40~50장). 한 번만 읽으면 되고 진행 막대로 어디쯤인지 보입니다 |
+| 성적·출결 | 표 칸은 낱글자 그림이라 OCR에 보내지 않습니다. **[성적] 페이지에 입력한 값**을 씁니다 |
+| 개인정보 | 받은 그림은 메모리에만 두고 디스크에 남기지 않으며, 접속 기록에도 생기부 내용이 남지 않습니다 |
+
+---
+
 ## 6. 인터넷이 없는 교실에서 PDF 열기
 
 생기부 PDF를 읽는 도구(pdf.js)는 기본적으로 인터넷에서 받아 옵니다.
@@ -174,6 +229,9 @@ curl -O https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js
 | 목록은 되는데 브라우저에서만 실패 | `OLLAMA_ORIGINS=*` 설정 후 `systemctl restart ollama` 했는지 |
 | “HTTPS 주소로 연 페이지에서는…” 경고 | 5번처럼 젯슨에서 콘솔을 제공하거나, 파일을 내려받아 여세요 |
 | “설치된 모델이 없습니다” | `ollama pull <모델이름>` 을 먼저 실행 |
+| “OCR 서버는 젯슨에서 … 따로 켜야 합니다” | 5-2번의 `ocr-server.py` 를 실행했는지 · `systemctl status saenggibu-ocr` |
+| “젯슨에 한국어 OCR 자료가 없습니다” | `sudo apt install -y tesseract-ocr-kor` 후 서버 다시 시작 |
+| 읽어 낸 글자가 많이 틀린다 | 나이스에서 **가장 큰 크기**로 내려받아 다시 시도해 보세요. 글씨가 작을수록 정확도가 떨어집니다 |
 | 응답이 너무 느리다 | 더 작은 모델로 바꾸기 · 넣는 생기부 영역 줄이기 · `nvpmodel -m 0` |
 | 중간에 끊긴다 | 고급 설정의 **응답 대기 시간**을 늘리기(예: 300초) |
 | 답변이 엉뚱하다 | 4B 미만 모델은 긴 글 요약에 약합니다. 영역을 3~4개로 줄이거나 모델을 키워 보세요 |
@@ -182,7 +240,7 @@ curl -O https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js
 
 ## 8. 꼭 기억할 것
 
-- 젯슨은 **교내망 안에서만** 접속되게 두세요. 인터넷에 열지 않습니다.
+- 젯슨은 **교내망 안에서만** 접속되게 두세요. 인터넷에 열지 않습니다(11434·8404 둘 다).
 - 생기부 원문은 콘솔에 저장되지 않지만, **젯슨 로그**에는 남을 수 있습니다.
   운영 중에는 로그를 주기적으로 확인·정리해 주세요 (`journalctl --vacuum-time=7d`).
 - AI가 만든 글은 **초안**입니다. 사실 관계와 표현을 담임 선생님이 반드시 확인한 뒤 사용해 주세요.

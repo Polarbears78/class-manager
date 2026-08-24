@@ -80,7 +80,13 @@
             <label for="aiTimeout">응답 대기 시간 (초)</label>
             <input type="number" id="aiTimeout" min="30" max="900" step="10" />
           </div>
+          <div class="field">
+            <label for="aiOcr">OCR 서버 주소 <span class="opt">한글(.hwp) 생기부를 읽을 때</span></label>
+            <input type="text" id="aiOcr" placeholder="비우면 위 서버와 같은 기기의 :8404" />
+          </div>
         </div>
+        <p class="note" style="margin-top:10px">나이스 생기부는 글자가 모두 그림으로 되어 있어, 그림을 글자로
+          바꿔 줄 OCR 서버를 젯슨에서 따로 켜야 합니다 — <a href="JETSON.md">설치 가이드</a> 참고.</p>
       </details>
       <p class="warn-box" id="aiMixed" hidden></p>
     </section>
@@ -88,23 +94,31 @@
     <!-- ══════ 2. 생기부 불러오기 ══════ -->
     <section class="card">
       <h2 class="card-title">2️⃣ 생기부 불러오기</h2>
-      <p class="help">나이스에서 내려받은 생기부 <b>PDF</b> 또는 <b>텍스트(.txt)</b> 파일을 고르세요.
+      <p class="help">나이스에서 내려받은 생기부 <b>한글(.hwp)</b> · <b>PDF</b> · <b>텍스트(.txt)</b> 파일을 고르세요.
         여러 학생이 한 파일에 들어 있어도 자동으로 나눕니다.
         파일은 브라우저 안에서만 읽히며, <b>원문은 어디에도 저장하지 않습니다</b>(새로고침하면 사라집니다).</p>
       <div class="row" style="flex-wrap:wrap">
-        <input type="file" id="sgbFile" accept=".pdf,.txt,.text" multiple hidden />
+        <input type="file" id="sgbFile" accept=".hwp,.pdf,.txt,.text" multiple hidden />
         <button class="btn" id="sgbPick">📄 생기부 파일 선택</button>
         <span class="save-status" id="sgbStatus" style="text-align:left"></span>
+      </div>
+      <p class="note" style="margin-top:10px">나이스 생기부는 위·변조를 막으려고 <b>글자를 모두 그림으로</b> 찍어 냅니다.
+        그래서 한글·PDF 어느 쪽이든 파일 안에 글자가 없고, 젯슨의 OCR 서버가 그림을 읽어 줍니다.
+        <b>읽어 낸 글은 스무 자에 한 자쯤 틀릴 수 있으니</b> 아래에서 확인·수정한 뒤 분석에 넣어 주세요.</p>
+      <div id="ocrBox" hidden style="margin-top:14px">
+        <div class="ocr-bar"><span id="ocrFill"></span></div>
+        <p class="save-status" id="ocrProg" style="text-align:left"></p>
       </div>
       <p class="warn-box" id="pdfWarn" hidden style="margin:14px 0 0">
         ⚠️ PDF 읽기 도구를 불러오지 못했습니다(인터넷 연결 없음). 아래 <b>붙여넣기</b>를 이용하시거나,
         젯슨에 도구 파일을 함께 올려 두면 인터넷 없이도 PDF를 열 수 있습니다 — <a href="JETSON.md">설치 가이드</a> 참고.
       </p>
       <details style="margin-top:14px" id="pasteDetails">
-        <summary class="det-sum">파일 대신 붙여넣기 (스캔 PDF·한글 문서일 때)</summary>
-        <textarea id="sgbPaste" rows="5" style="margin-top:10px" placeholder="생기부 내용을 복사해 붙여넣으세요."></textarea>
-        <div class="row" style="margin-top:10px">
-          <button class="btn btn-ghost" id="sgbPasteBtn">붙여넣은 내용 불러오기</button>
+        <summary class="det-sum" id="pasteSum">읽어 낸 글 확인·수정 · 직접 붙여넣기</summary>
+        <textarea id="sgbPaste" rows="10" style="margin-top:10px" placeholder="생기부 내용을 복사해 붙여넣으세요."></textarea>
+        <div class="row" style="margin-top:10px;flex-wrap:wrap">
+          <button class="btn btn-ghost" id="sgbPasteBtn">이 내용으로 불러오기</button>
+          <span class="save-status" id="pasteCount" style="text-align:left"></span>
         </div>
       </details>
       <div class="chip-list" id="sgbChips"></div>
@@ -185,6 +199,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
   <script src="ai.js"></script>
+  <script src="hwp.js"></script>
   <script src="saenggibu.js"></script>
   <script>
     (function () {
@@ -208,6 +223,7 @@
         $('aiTemp').value = s.temp;
         $('aiMax').value = s.maxTokens;
         $('aiTimeout').value = s.timeout;
+        $('aiOcr').value = s.ocr || '';
         if (s.model) $('aiModel').innerHTML = `<option value="${esc(s.model)}">${esc(s.model)}</option>`;
         checkMixed();
       }
@@ -219,6 +235,7 @@
           temp: Number($('aiTemp').value) || 0.3,
           maxTokens: Number($('aiMax').value) || 1600,
           timeout: Number($('aiTimeout').value) || 180,
+          ocr: $('aiOcr').value.trim(),
         };
       }
       function persist() { LocalAI.saveSettings(readSettings()); }
@@ -274,7 +291,7 @@
       });
 
       $('aiModel').addEventListener('change', persist);
-      ['aiApi', 'aiTemp', 'aiMax', 'aiTimeout'].forEach((id) => $(id).addEventListener('change', persist));
+      ['aiApi', 'aiTemp', 'aiMax', 'aiTimeout', 'aiOcr'].forEach((id) => $(id).addEventListener('change', persist));
 
       /* ══════════ 2. 생기부 불러오기 ══════════ */
       /* PDF 읽기 도구는 기본적으로 CDN에서 받아 오지만, 인터넷이 없는 학교망을 위해
@@ -318,10 +335,62 @@
         return pages.join('\n\n');
       }
 
-      async function ingest(text, sourceName) {
+      /* ── 한글(.hwp) 생기부 ──────────────────────────────────
+       *
+       * 나이스는 위·변조를 막으려고 생기부의 글자를 모두 그림으로 찍어 낸다.
+       * 그래서 파일에서 글자를 뽑는 대신, 글이 든 그림을 순서대로 꺼내
+       * 젯슨의 OCR 서버로 보내 글자로 바꿔 온다. 표 칸의 낱글자(가로 20px
+       * 남짓)는 보내지 않는다 — 느리기만 하고 잘 맞지도 않으며, 성적·출결은
+       * [성적] 페이지에 입력한 값을 쓰기 때문이다.
+       */
+      function showOcrProgress(done, total) {
+        $('ocrBox').hidden = false;
+        $('ocrFill').style.width = total ? Math.round((done / total) * 100) + '%' : '0';
+        $('ocrProg').textContent = `그림에서 글자를 읽는 중… ${done} / ${total}`;
+      }
+
+      async function hwpText(buf, fileName) {
+        const doc = await HwpReader.read(buf);
+        const shots = HwpReader.textImages(doc.images);
+        if (!shots.length) {
+          throw new Error(`“${fileName}”에서 글이 든 그림을 찾지 못했습니다. 나이스에서 내려받은 생기부가 맞는지 확인해 주세요.`);
+        }
+        await LocalAI.ocrHealth();
+        showOcrProgress(0, shots.length);
+        try {
+          const parts = await LocalAI.ocrImages(shots, showOcrProgress);
+          return parts.filter(Boolean).join('\n\n');
+        } finally {
+          $('ocrBox').hidden = true;
+        }
+      }
+
+      /* OCR 로 읽은 글은 틀린 글자가 섞이므로 곧바로 분석에 넣지 않는다.
+       * 확인 칸에 담아 두고 선생님이 고친 뒤 직접 불러오게 한다. */
+      function stageForReview(text, fileName) {
+        const box = $('sgbPaste');
+        box.value = (box.value.trim() ? box.value.trim() + '\n\n' : '') + text;
+        $('pasteDetails').open = true;
+        $('pasteSum').textContent = `읽어 낸 글 확인·수정 — ${fileName}`;
+        box.dataset.hint = fileName.replace(/\.[^.]+$/, '');
+        updateCount();
+        box.focus();
+        box.setSelectionRange(0, 0);
+        box.scrollTop = 0;
+      }
+
+      function updateCount() {
+        const n = $('sgbPaste').value.replace(/\s/g, '').length;
+        $('pasteCount').textContent = n ? `${n.toLocaleString()}자` : '';
+      }
+      $('sgbPaste').addEventListener('input', updateCount);
+
+      async function ingest(text, sourceName, nameHint) {
         const found = Saenggibu.parse(text);
         if (!found.length) throw new Error('생기부 형식을 알아보지 못했습니다.');
         found.forEach((st) => { st.source = sourceName; });
+        // 이름이 표 칸(그림)에 있어 못 읽은 경우, 파일 이름을 이름 자리에 쓴다
+        if (nameHint && found.length === 1 && !found[0].nameFound) found[0].name = nameHint;
         // 같은 이름이 다시 들어오면 덮어쓴다
         found.forEach((st) => {
           const i = students.findIndex((x) => x.name === st.name && st.nameFound);
@@ -341,6 +410,12 @@
         try {
           for (const f of files) {
             let text;
+            if (/\.hwp$/i.test(f.name)) {
+              // OCR 결과는 바로 넣지 않고 확인 칸에 담아 둔다
+              stageForReview(await hwpText(await f.arrayBuffer(), f.name), f.name);
+              flash($('sgbStatus'), '✓ 글자로 바꿨습니다 — 아래에서 확인·수정한 뒤 불러오세요', 20000);
+              continue;
+            }
             if (/\.pdf$/i.test(f.name)) {
               text = await pdfText(await f.arrayBuffer());
               if (text.replace(/\s/g, '').length < 100) {
@@ -351,7 +426,7 @@
             }
             total += await ingest(text, f.name);
           }
-          flash($('sgbStatus'), `✓ 학생 ${total}명을 불러왔습니다`);
+          if (total) flash($('sgbStatus'), `✓ 학생 ${total}명을 불러왔습니다`);
         } catch (err) {
           flash($('sgbStatus'), '✕ ' + err.message, 15000);
         }
@@ -361,8 +436,12 @@
         const text = $('sgbPaste').value.trim();
         if (!text) { flash($('sgbStatus'), '붙여넣은 내용이 없습니다'); return; }
         try {
-          const n = await ingest(text, '붙여넣기');
-          $('sgbPaste').value = '';
+          const box = $('sgbPaste');
+          const n = await ingest(text, box.dataset.hint || '붙여넣기', box.dataset.hint || '');
+          box.value = '';
+          delete box.dataset.hint;
+          $('pasteSum').textContent = '읽어 낸 글 확인·수정 · 직접 붙여넣기';
+          updateCount();
           flash($('sgbStatus'), `✓ 학생 ${n}명을 불러왔습니다`);
         } catch (err) {
           flash($('sgbStatus'), '✕ ' + err.message, 12000);

@@ -125,14 +125,57 @@
     return { names: [...files.keys()], read };
   }
 
-  // ── 압축 풀기 (헤더 없는 deflate) ────────────────────────────
+  /* ── 압축 풀기 (헤더 없는 deflate) ────────────────────────────
+   *
+   * 한글의 구역 자료는 '헤더 없는 deflate + 꼬리표 8바이트' 꼴이다.
+   * 꼬리표는 gzip 과 같은 모양으로 CRC32(4) + 원본 길이(4)가 들어 있다.
+   * DecompressionStream 은 이 남는 8바이트를 보고 오류를 내면서 아직
+   * 내보내지 않은 내용까지 버리므로, 꼬리표를 먼저 떼고 푼 뒤 길이가
+   * 맞는지 확인한다. 꼬리표가 없는 파일을 위해 통째로 푸는 길도 남겨 둔다.
+   */
+  function inflateChunks(bytes) {
+    const ds = new DecompressionStream('deflate-raw');
+    const writer = ds.writable.getWriter();
+    writer.write(bytes).catch(() => {});
+    writer.close().catch(() => {});
+
+    const reader = ds.readable.getReader();
+    return (async () => {
+      const chunks = [];
+      let total = 0, failed = false;
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          total += value.length;
+        }
+      } catch (err) {
+        failed = true;
+      }
+      const out = new Uint8Array(total);
+      let at = 0;
+      chunks.forEach((c) => { out.set(c, at); at += c.length; });
+      return { out, failed };
+    })();
+  }
+
   async function inflateRaw(bytes) {
     if (typeof DecompressionStream !== 'function') {
       throw new Error('이 브라우저는 한글 파일 압축을 풀지 못합니다. 최신 크롬·엣지로 열어 주세요.');
     }
-    const ds = new DecompressionStream('deflate-raw');
-    const stream = new Blob([bytes]).stream().pipeThrough(ds);
-    return new Uint8Array(await new Response(stream).arrayBuffer());
+    if (bytes.length > 8) {
+      const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
+      const expect = dv.getUint32(bytes.length - 4, true);
+      const body = await inflateChunks(bytes.subarray(0, bytes.length - 8));
+      if (!body.failed && body.out.length === expect) return body.out;
+    }
+    // 꼬리표가 없거나 길이가 안 맞으면 통째로 풀어 본다
+    const whole = await inflateChunks(bytes);
+    if (!whole.out.length) {
+      throw new Error('한글 파일의 압축을 풀지 못했습니다. 파일이 손상되었을 수 있습니다.');
+    }
+    return whole.out;
   }
 
   // ── HWP 레코드 ───────────────────────────────────────────────

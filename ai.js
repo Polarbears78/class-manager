@@ -19,6 +19,7 @@
     temp: 0.3,     // 상담 자료는 사실 위주 — 낮게
     maxTokens: 1600,
     timeout: 180,  // 초. 젯슨은 클라우드보다 느리므로 넉넉히
+    ocr: '',       // 그림 글자 읽기 서버. 비우면 모델 서버와 같은 기기의 8404번
   };
 
   const load = () => {
@@ -214,6 +215,98 @@
     return { api, models, tried: true, reply: reply.trim().slice(0, 80) };
   }
 
+  /* ── 그림에서 글자 읽기(OCR) ──────────────────────────────────
+   *
+   * 나이스 생기부는 위·변조를 막으려고 글자를 모두 그림으로 찍어 넣는다.
+   * 그래서 파일에서 꺼낸 그림을 젯슨의 OCR 서버로 보내 글자로 바꿔 온다.
+   * 서버는 jetson/ocr-server.py — 모델 서버와는 별개이고 포트도 다르다.
+   */
+
+  const OCR_PORT = 8404;
+
+  /** OCR 서버 주소. 따로 적지 않았으면 모델 서버와 같은 기기의 8404번으로 본다 */
+  function ocrBase(settings) {
+    const s = settings || load();
+    if (s.ocr) return normBase(s.ocr);
+    const b = normBase(s.base);
+    return b ? b.replace(/:\d+$/, '') + ':' + OCR_PORT : '';
+  }
+
+  /* tesseract 는 작고 흐린 글씨에 약하다. 흰 바탕에 얹어 두 배로 키우면
+   * 눈에 띄게 정확해진다(세 배는 더 나아지지 않는다). 알파 채널이 있는
+   * 그림을 그냥 보내면 검은 바탕으로 읽는 일도 있어 흰 바탕 합성이 필요하다. */
+  const OCR_SCALE = 2;
+
+  async function prepareImage(bytes, mime) {
+    const blob = new Blob([bytes], { type: mime });
+    const bmp = await createImageBitmap(blob);
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(bmp.width * OCR_SCALE));
+    cv.height = Math.max(1, Math.round(bmp.height * OCR_SCALE));
+    const cx = cv.getContext('2d');
+    cx.fillStyle = '#fff';
+    cx.fillRect(0, 0, cv.width, cv.height);
+    cx.imageSmoothingQuality = 'high';
+    cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+    bmp.close && bmp.close();
+    return new Promise((res) => cv.toBlob(res, 'image/png'));
+  }
+
+  /** OCR 서버가 살아 있는지, 한국어 자료가 깔려 있는지 확인 */
+  async function ocrHealth(settings) {
+    const base = ocrBase(settings);
+    if (!base) throw new Error('서버 주소를 먼저 입력해 주세요.');
+    const t = withTimeout(20);
+    let res;
+    try {
+      res = await fetch(base + '/health', { signal: t.signal });
+    } catch (err) {
+      throw new Error(explain(err, base) +
+        ' (OCR 서버는 젯슨에서 `python3 jetson/ocr-server.py` 로 따로 켜야 합니다.)');
+    } finally {
+      t.done();
+    }
+    if (!res.ok) throw new Error('OCR 서버가 ' + res.status + ' 로 답했습니다.');
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.hint || '젯슨에 한국어 OCR 자료가 없습니다.');
+    return j;
+  }
+
+  /**
+   * 그림 여러 장을 차례로 글자로 바꾼다.
+   * @param {Array<{bytes:Uint8Array, mime:string}>} images
+   * @param {(done:number, total:number)=>void} onProgress
+   * @returns {Promise<string[]>} 그림 순서 그대로의 글줄
+   */
+  async function ocrImages(images, onProgress, settings) {
+    const s = settings || load();
+    const base = ocrBase(s);
+    if (!base) throw new Error('서버 주소를 먼저 입력해 주세요.');
+    const out = [];
+    for (let i = 0; i < images.length; i++) {
+      const png = await prepareImage(images[i].bytes, images[i].mime);
+      const t = withTimeout(s.timeout || 180);
+      let res;
+      try {
+        res = await fetch(base + '/ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'image/png' },
+          body: png,
+          signal: t.signal,
+        });
+      } catch (err) {
+        throw new Error(explain(err, base));
+      } finally {
+        t.done();
+      }
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || ('OCR 서버가 ' + res.status + ' 로 답했습니다.'));
+      out.push(String(j.text || '').trim());
+      if (onProgress) onProgress(i + 1, images.length);
+    }
+    return out;
+  }
+
   window.LocalAI = {
     DEFAULTS,
     getSettings: load,
@@ -223,5 +316,8 @@
     listModels,
     chat,
     testConnection,
+    ocrBase,
+    ocrHealth,
+    ocrImages,
   };
 })();
