@@ -78,11 +78,14 @@
     return out.filter((s) => s.length > 80);
   }
 
+  /* 이름표(성명·이름)는 줄 첫머리에 있을 때만 믿는다.
+   * OCR 로 읽은 글에서는 문장 속 '설명'이 '성명'으로 잘못 읽히는 일이 잦아,
+   * 아무 데나 걸리게 두면 엉뚱한 낱말을 이름으로 집는다. */
   function findName(block) {
     const pats = [
-      /성\s*명\s*[:：]?\s*([가-힣]{2,5})/,
-      /이\s*름\s*[:：]?\s*([가-힣]{2,5})/,
-      /성명\s*\n\s*([가-힣]{2,5})/,
+      /(?:^|\n)\s*성\s*명\s*[:：]\s*([가-힣]{2,5})/,
+      /(?:^|\n)\s*이\s*름\s*[:：]\s*([가-힣]{2,5})/,
+      /(?:^|\n)\s*성\s*명\s*\n\s*([가-힣]{2,5})/,
     ];
     for (const p of pats) {
       const m = block.match(p);
@@ -177,8 +180,13 @@
   }
 
   /* 파일 하나의 텍스트 → 학생 목록 */
-  function parse(rawText) {
-    return splitStudents(rawText).map((block, i) => {
+  /* parse(글, { single })
+   *   single: 여러 학생으로 나누지 않고 통째로 한 명으로 본다.
+   *           OCR 로 읽은 글은 영역 머리글이 흐트러져 잘못 나뉘므로,
+   *           한 학생의 파일임이 분명할 때 이 선택을 쓴다. */
+  function parse(rawText, opts) {
+    const blocks = (opts && opts.single) ? [clean(rawText)] : splitStudents(rawText);
+    return blocks.map((block, i) => {
       const sections = splitSections(block);
       const name = findName(block);
       return Object.assign({

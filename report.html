@@ -373,6 +373,9 @@
         $('pasteDetails').open = true;
         $('pasteSum').textContent = `읽어 낸 글 확인·수정 — ${fileName}`;
         box.dataset.hint = fileName.replace(/\.[^.]+$/, '');
+        // OCR 로 읽은 글은 영역 머리글이 흐트러져 학생이 잘못 나뉜다.
+        // 나이스 한글 파일은 한 학생분이므로 통째로 한 명으로 다룬다.
+        box.dataset.single = '1';
         updateCount();
         box.focus();
         box.setSelectionRange(0, 0);
@@ -385,12 +388,13 @@
       }
       $('sgbPaste').addEventListener('input', updateCount);
 
-      async function ingest(text, sourceName, nameHint) {
-        const found = Saenggibu.parse(text);
+      async function ingest(text, sourceName, opts) {
+        const o = opts || {};
+        const found = Saenggibu.parse(text, { single: !!o.single });
         if (!found.length) throw new Error('생기부 형식을 알아보지 못했습니다.');
         found.forEach((st) => { st.source = sourceName; });
-        // 이름이 표 칸(그림)에 있어 못 읽은 경우, 파일 이름을 이름 자리에 쓴다
-        if (nameHint && found.length === 1 && !found[0].nameFound) found[0].name = nameHint;
+        // 이름이 표 칸(그림)에 있어 못 읽었으면 파일 이름을 이름 자리에 쓴다
+        if (o.nameHint && found.length === 1 && !found[0].nameFound) found[0].name = o.nameHint;
         // 같은 이름이 다시 들어오면 덮어쓴다
         found.forEach((st) => {
           const i = students.findIndex((x) => x.name === st.name && st.nameFound);
@@ -437,9 +441,13 @@
         if (!text) { flash($('sgbStatus'), '붙여넣은 내용이 없습니다'); return; }
         try {
           const box = $('sgbPaste');
-          const n = await ingest(text, box.dataset.hint || '붙여넣기', box.dataset.hint || '');
+          const n = await ingest(text, box.dataset.hint || '붙여넣기', {
+            nameHint: box.dataset.hint || '',
+            single: box.dataset.single === '1',
+          });
           box.value = '';
           delete box.dataset.hint;
+          delete box.dataset.single;
           $('pasteSum').textContent = '읽어 낸 글 확인·수정 · 직접 붙여넣기';
           updateCount();
           flash($('sgbStatus'), `✓ 학생 ${n}명을 불러왔습니다`);
