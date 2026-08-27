@@ -25,7 +25,40 @@ hostname -I
 
 ---
 
-## 1. Ollama 설치
+## 1. 한 번에 설치하기 (권장)
+
+명령을 하나씩 따라 하기 어려우시면, 저장소를 젯슨에 내려받아 이것만 실행하세요.
+**설치·설정·확인을 한 번에 하고, 콘솔에 넣을 주소까지 알려 줍니다.**
+
+```bash
+sudo apt install -y git
+git clone -b claude/saenggibu-analysis-counseling-uwuq8j \
+  https://github.com/Polarbears78/class-manager.git ~/class-manager
+sudo bash ~/class-manager/jetson/setup.sh
+```
+
+| 명령 | 하는 일 |
+|---|---|
+| `sudo bash setup.sh` | 빠진 것을 설치·설정하고 확인 |
+| `bash setup.sh --check` | **아무것도 바꾸지 않고** 점검만 (sudo 불필요) |
+| `sudo bash setup.sh --model gemma3:4b` | 모델까지 내려받기 (수 GB, 시간 걸림) |
+
+이미 되어 있는 것은 건너뛰므로 **여러 번 실행해도 안전합니다.**
+마지막에 `정상 N · 주의 N · 문제 N` 과 콘솔에 넣을 주소가 나옵니다.
+문제가 남으면 그 출력을 그대로 전달해 주시면 됩니다.
+
+Ollama 만 아직 없다면 이 한 줄을 먼저 실행하세요.
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+아래 2번부터는 `setup.sh` 가 하는 일을 손으로 하는 방법입니다.
+스크립트를 쓰셨다면 **3번(모델 내려받기)으로 건너뛰셔도 됩니다.**
+
+---
+
+## 2. Ollama 설치
 
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
@@ -39,7 +72,7 @@ systemctl status ollama
 
 ---
 
-## 2. 교사 PC에서 접속할 수 있게 열어 주기
+## 2-1. 교사 PC에서 접속할 수 있게 열어 주기
 
 기본 설정의 Ollama는 **젯슨 자기 자신에서만** 접속됩니다.
 교사 PC의 브라우저가 부를 수 있도록 두 가지를 바꿉니다.
@@ -225,8 +258,14 @@ curl -O https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js
 
 ### 7.1 한 번에 진단하기
 
-증상을 하나씩 짚기 전에, 젯슨 터미널(또는 USB-C·SSH로 붙은 PC 터미널)에서
-아래를 **통째로 붙여넣으세요.** 필요한 것이 한 번에 다 나옵니다.
+저장소를 젯슨에 내려받아 두셨다면 이 한 줄이 가장 빠릅니다.
+
+```bash
+bash ~/class-manager/jetson/setup.sh --check
+```
+
+아무것도 바꾸지 않고 점검만 하며, 무엇이 문제인지와 고치는 명령까지 알려 줍니다.
+저장소 없이 확인만 하시려면 아래를 **통째로 붙여넣으세요.**
 
 ```bash
 {
@@ -254,7 +293,7 @@ curl -s -m 5 localhost:8404/health || echo "OCR 응답 없음"
 |---|---|---|
 | **주소** | 유선 `10.x.x.x` · USB-C `192.168.55.1` | 와이파이라면 주소가 바뀌었을 수 있습니다 → 7.2 |
 | **서비스** | `active` 두 줄 | `inactive` → `sudo systemctl restart ollama` (또는 `saenggibu-ocr`) |
-| **열린 포트** | `0.0.0.0:11434` · `0.0.0.0:8404` | `127.0.0.1:11434` → 2번의 `OLLAMA_HOST=0.0.0.0` 누락 |
+| **열린 포트** | `0.0.0.0:11434` · `0.0.0.0:8404` | `127.0.0.1:11434` → 2-1번의 `OLLAMA_HOST=0.0.0.0` 누락 (`setup.sh` 가 고쳐 줍니다) |
 | **OCR 언어** | 목록에 `kor` | 없으면 `sudo apt install -y tesseract-ocr-kor` |
 | **설치된 모델** | 쓸 모델 이름 | 비었으면 `ollama pull <모델>` |
 | **자체 확인** | `Ollama is running` · `{"ok":true…}` | 안 나오면 젯슨 자체 문제 — 위 두 줄부터 |
@@ -307,7 +346,7 @@ PC 주소(`ipconfig`)와 젯슨 주소의 **앞 세 자리를 비교**하세요.
 | 증상 | 확인할 것 |
 |---|---|
 | “서버에 연결하지 못했습니다” | 젯슨 전원·`systemctl status ollama`·IP와 포트·방화벽(`ufw allow 11434/tcp`) |
-| 목록은 되는데 브라우저에서만 실패 | `OLLAMA_ORIGINS=*` 설정 후 `systemctl restart ollama` 했는지 |
+| 목록은 되는데 브라우저에서만 실패 | `OLLAMA_ORIGINS=*` 설정 후 `systemctl restart ollama` 했는지 (`setup.sh` 가 대신 해 줍니다) |
 | “HTTPS 주소로 연 페이지에서는…” 경고 | 5번처럼 젯슨에서 콘솔을 제공하거나, 파일을 내려받아 여세요 |
 | “설치된 모델이 없습니다” | `ollama pull <모델이름>` 을 먼저 실행 |
 | “OCR 서버는 젯슨에서 … 따로 켜야 합니다” | 5-2번의 `ocr-server.py` 를 실행했는지 · `systemctl status saenggibu-ocr` |
