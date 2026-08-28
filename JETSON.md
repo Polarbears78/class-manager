@@ -239,19 +239,19 @@ sudo systemctl daemon-reload && sudo systemctl enable --now saenggibu-ocr
 
 ---
 
-## 6. 인터넷이 없는 교실에서 PDF 열기
+## 6. 인터넷이 없는 교실에서도 PDF 열기
 
-생기부 PDF를 읽는 도구(pdf.js)는 기본적으로 인터넷에서 받아 옵니다.
-인터넷이 막힌 망이라면 파일을 미리 받아 콘솔 폴더 안 `vendor/` 에 넣어 두세요. 콘솔이 자동으로 찾아 씁니다.
+**따로 하실 일이 없습니다.** 생기부 PDF를 읽는 도구(pdf.js)를 저장소의 `vendor/` 에
+함께 넣어 두었습니다. 콘솔은 인터넷을 먼저 시도하고, 막혀 있으면 이 사본을 씁니다.
+
+콘솔을 젯슨에서 제공하실 때(5번) `vendor/` 폴더도 **같이 복사**되었는지만 확인해 주세요.
+저장소를 통째로 복사하셨다면 이미 들어 있습니다.
 
 ```bash
-mkdir -p /var/www/class-manager/vendor
-cd /var/www/class-manager/vendor
-curl -O https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js
-curl -O https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js
+ls /var/www/class-manager/vendor/pdf.min.js   # 있으면 끝
 ```
 
-넣지 않아도 **붙여넣기**로는 언제나 사용할 수 있습니다.
+없으면 저장소에서 다시 복사하시면 됩니다.
 
 ---
 

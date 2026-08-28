@@ -367,8 +367,9 @@
         try {
           for (let i = 1; i <= total; i++) {
             const blob = await pdfPageImage(pdf, i);
-            // psm 3 = 한 쪽 전체(제목·표·문단이 섞인 문서)
-            const [txt] = await LocalAI.ocrImages([{ blob }], null, { psm: 3 });
+            // psm 4 = 크기가 다른 글이 한 단으로 흐르는 문서(생기부 한 쪽 전체).
+            // 실제 생기부로 재 보니 psm 3 은 같은 쪽에서 글자를 3분의 1쯤 흘렸다.
+            const [txt] = await LocalAI.ocrImages([{ blob }], null, { psm: 4 });
             if (txt) parts.push(txt);
             showOcrProgress(i, total);
           }

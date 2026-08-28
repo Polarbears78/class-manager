@@ -279,7 +279,7 @@
    *   blob 을 주면(이미 알맞게 그려 둔 그림) 그대로 보낸다.
    * @param {(done:number, total:number)=>void} onProgress
    * @param {{settings?:object, psm?:number}} opts
-   *   psm 6 = 글줄 덩어리(기본), 3 = 한 쪽 전체(제목·표가 섞인 문서)
+   *   psm 6 = 글줄 덩어리(기본), 4 = 한 쪽 전체(크기가 다른 글이 한 단으로 흐르는 문서)
    * @returns {Promise<string[]>} 그림 순서 그대로의 글줄
    */
   async function ocrImages(images, onProgress, opts) {

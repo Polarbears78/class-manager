@@ -206,14 +206,42 @@
    *   student : parse()가 돌려준 학생 하나
    *   picked  : 넣을 영역 이름 배열
    *   opts    : { maskName, limit } — limit은 영역별 글자 수 상한(작은 모델 보호) */
+  /* 영역 머리글을 얼마나 믿을 수 있는가.
+   * 나눈 영역들의 길이 합이 원문의 절반도 안 되면, 머리글을 제대로 못 읽은 것이다
+   * (OCR 로 읽은 글에서 흔하다 — '3. 수상경력' 이 '3, 수삼경력' 처럼 나온다).
+   * 이때 잡힌 영역만 넘기면 원문 대부분을 버리게 되므로 원문 쪽을 쓴다. */
+  function coverage(student) {
+    const raw = (student.raw || '').replace(/\s/g, '').length;
+    if (!raw) return 1;
+    const got = Object.values(student.sections || {})
+      .reduce((n, body) => n + String(body).replace(/\s/g, '').length, 0);
+    return got / raw;
+  }
+
+  /* 영역을 못 나눈 글에서 알맹이만 고른다.
+   * 생기부 한 쪽을 통째로 읽으면 표 칸 부스러기('3', '나', '2학기' 같은 조각)가
+   * 잔뜩 섞인다. 어느 정도 길고 한글이 많은 줄만 남기면 서술형 내용이 살아남는다. */
+  function condense(text, limit) {
+    const keep = [];
+    String(text).split('\n').forEach((line) => {
+      const l = line.trim();
+      if (l.length < 20) return;
+      const ko = (l.match(/[가-힣]/g) || []).length;
+      if (ko / l.length < 0.3) return;
+      keep.push(l);
+    });
+    const body = (keep.length ? keep : String(text).split('\n')).join('\n');
+    return body.length > limit ? body.slice(0, limit) + '\n…(이하 생략)' : body;
+  }
+
   function excerpt(student, picked, opts) {
     const o = Object.assign({ maskName: true, limit: 1800 }, opts || {});
     const names = (picked && picked.length ? picked : student.sectionNames)
       .filter((n) => student.sections[n]);
 
-    if (!names.length) {
-      // 영역을 못 나눈 경우 원문 앞부분이라도 넘긴다
-      return scrub(student.raw.slice(0, o.limit * 2), { maskName: o.maskName, name: student.name });
+    // 영역을 못 나눴거나, 나눈 것이 원문의 절반도 못 담으면 원문에서 알맹이를 고른다
+    if (!names.length || coverage(student) < 0.5) {
+      return scrub(condense(student.raw, o.limit * 3), { maskName: o.maskName, name: student.name });
     }
     const joined = names.map((n) => {
       let body = student.sections[n];
@@ -223,5 +251,5 @@
     return scrub(joined, { maskName: o.maskName, name: student.name });
   }
 
-  window.Saenggibu = { SECTIONS: SECTIONS.map((s) => s[0]), CORE, parse, scrub, excerpt, clean };
+  window.Saenggibu = { SECTIONS: SECTIONS.map((s) => s[0]), CORE, parse, scrub, excerpt, clean, coverage, condense };
 })();
