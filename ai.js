@@ -274,21 +274,27 @@
 
   /**
    * 그림 여러 장을 차례로 글자로 바꾼다.
-   * @param {Array<{bytes:Uint8Array, mime:string}>} images
+   * @param {Array<{bytes:Uint8Array, mime:string} | {blob:Blob}>} images
+   *   bytes·mime 을 주면 흰 바탕에 얹어 두 배로 키워 보내고,
+   *   blob 을 주면(이미 알맞게 그려 둔 그림) 그대로 보낸다.
    * @param {(done:number, total:number)=>void} onProgress
+   * @param {{settings?:object, psm?:number}} opts
+   *   psm 6 = 글줄 덩어리(기본), 3 = 한 쪽 전체(제목·표가 섞인 문서)
    * @returns {Promise<string[]>} 그림 순서 그대로의 글줄
    */
-  async function ocrImages(images, onProgress, settings) {
-    const s = settings || load();
+  async function ocrImages(images, onProgress, opts) {
+    const o = opts || {};
+    const s = o.settings || load();
     const base = ocrBase(s);
     if (!base) throw new Error('서버 주소를 먼저 입력해 주세요.');
+    const psm = o.psm || 6;
     const out = [];
     for (let i = 0; i < images.length; i++) {
-      const png = await prepareImage(images[i].bytes, images[i].mime);
+      const png = images[i].blob || await prepareImage(images[i].bytes, images[i].mime);
       const t = withTimeout(s.timeout || 180);
       let res;
       try {
-        res = await fetch(base + '/ocr', {
+        res = await fetch(base + '/ocr?psm=' + psm, {
           method: 'POST',
           headers: { 'Content-Type': 'image/png' },
           body: png,

@@ -313,12 +313,15 @@
         return typeof pdfjsLib !== 'undefined';
       }
 
-      async function pdfText(buf) {
+      async function openPdf(buf) {
         if (!(await ensurePdf())) {
           throw new Error('PDF 읽기 도구를 불러오지 못했습니다. 인터넷 연결이 없는 환경이라면 생기부 내용을 복사해 “붙여넣기”로 사용해 주세요.');
         }
         pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerSrc;
-        const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+        return pdfjsLib.getDocument({ data: buf }).promise;
+      }
+
+      async function pdfText(pdf) {
         const pages = [];
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
@@ -335,6 +338,49 @@
         return pages.join('\n\n');
       }
 
+      /* 나이스 PDF는 글자가 없으므로 쪽을 그림으로 그려 OCR에 보낸다.
+       * tesseract 는 글자가 작으면 약해서, 가로 2000px 안팎이 되도록 키워 그린다. */
+      const PDF_OCR_WIDTH = 2000;
+
+      async function pdfPageImage(pdf, num) {
+        const page = await pdf.getPage(num);
+        const unit = page.getViewport({ scale: 1 });
+        const scale = Math.min(4, Math.max(1.5, PDF_OCR_WIDTH / unit.width));
+        const vp = page.getViewport({ scale });
+        const cv = document.createElement('canvas');
+        cv.width = Math.round(vp.width);
+        cv.height = Math.round(vp.height);
+        const cx = cv.getContext('2d');
+        cx.fillStyle = '#fff';                 // 투명 배경을 검게 읽지 않도록
+        cx.fillRect(0, 0, cv.width, cv.height);
+        await page.render({ canvasContext: cx, viewport: vp }).promise;
+        return new Promise((res) => cv.toBlob(res, 'image/png'));
+      }
+
+      /* 쪽마다 '그리고 → 읽고 → 버리고' 를 되풀이한다.
+       * 전부 그려 두면 큰 그림 여러 장을 한꺼번에 들고 있게 되어 메모리가 부담된다. */
+      async function pdfOcr(pdf, fileName) {
+        await LocalAI.ocrHealth();
+        const total = pdf.numPages;
+        const parts = [];
+        showOcrProgress(0, total);
+        try {
+          for (let i = 1; i <= total; i++) {
+            const blob = await pdfPageImage(pdf, i);
+            // psm 3 = 한 쪽 전체(제목·표·문단이 섞인 문서)
+            const [txt] = await LocalAI.ocrImages([{ blob }], null, { psm: 3 });
+            if (txt) parts.push(txt);
+            showOcrProgress(i, total);
+          }
+        } finally {
+          $('ocrBox').hidden = true;
+        }
+        if (!parts.length) {
+          throw new Error(`“${fileName}”에서 글자를 읽어 내지 못했습니다. 붙여넣기로 사용해 주세요.`);
+        }
+        return parts.join('\n\n');
+      }
+
       /* ── 한글(.hwp) 생기부 ──────────────────────────────────
        *
        * 나이스는 위·변조를 막으려고 생기부의 글자를 모두 그림으로 찍어 낸다.
@@ -343,10 +389,10 @@
        * 남짓)는 보내지 않는다 — 느리기만 하고 잘 맞지도 않으며, 성적·출결은
        * [성적] 페이지에 입력한 값을 쓰기 때문이다.
        */
-      function showOcrProgress(done, total) {
+      function showOcrProgress(done, total, what) {
         $('ocrBox').hidden = false;
         $('ocrFill').style.width = total ? Math.round((done / total) * 100) + '%' : '0';
-        $('ocrProg').textContent = `그림에서 글자를 읽는 중… ${done} / ${total}`;
+        $('ocrProg').textContent = `${what || '그림에서 글자를 읽는 중'}… ${done} / ${total}`;
       }
 
       async function hwpText(buf, fileName) {
@@ -421,9 +467,13 @@
               continue;
             }
             if (/\.pdf$/i.test(f.name)) {
-              text = await pdfText(await f.arrayBuffer());
+              const pdf = await openPdf(await f.arrayBuffer());
+              text = await pdfText(pdf);
               if (text.replace(/\s/g, '').length < 100) {
-                throw new Error(`“${f.name}”에서 글자를 찾지 못했습니다. 스캔한 이미지 PDF로 보입니다 — 내용을 복사해 “붙여넣기”로 사용해 주세요.`);
+                // 나이스 PDF는 글자가 한 자도 없다 — 쪽을 그림으로 그려 OCR
+                stageForReview(await pdfOcr(pdf, f.name), f.name);
+                flash($('sgbStatus'), '✓ 글자로 바꿨습니다 — 아래에서 확인·수정한 뒤 불러오세요', 20000);
+                continue;
               }
             } else {
               text = new TextDecoder('utf-8').decode(await f.arrayBuffer());
