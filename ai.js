@@ -20,6 +20,7 @@
     maxTokens: 1600,
     timeout: 180,  // 초. 젯슨은 클라우드보다 느리므로 넉넉히
     ocr: '',       // 그림 글자 읽기 서버. 비우면 모델 서버와 같은 기기의 8404번
+    inputChars: 30000, // 분석에 넣을 생기부 글자 수 상한
   };
 
   const load = () => {
@@ -126,7 +127,15 @@
     const url = base + (api === 'openai' ? '/v1/chat/completions' : '/api/chat');
     const body = api === 'openai'
       ? { model: s.model, messages, stream: true, temperature: Number(s.temp), max_tokens: Number(s.maxTokens) }
-      : { model: s.model, messages, stream: true, options: { temperature: Number(s.temp), num_predict: Number(s.maxTokens) } };
+      : {
+          model: s.model, messages, stream: true,
+          options: {
+            temperature: Number(s.temp),
+            num_predict: Number(s.maxTokens),
+            // 이걸 안 주면 Ollama는 2048 토큰만 읽고 나머지를 조용히 버린다
+            num_ctx: contextFor(messages, s.maxTokens),
+          },
+        };
 
     try {
       const res = await fetch(url, {
@@ -148,6 +157,22 @@
       t.done();
       if (opts.signal) opts.signal.removeEventListener('abort', t.abort);
     }
+  }
+
+  /* Ollama 에 넘길 문맥 크기.
+   *
+   * Ollama 는 따로 일러 주지 않으면 num_ctx 2048 로 잘라 읽는다. 생기부처럼
+   * 긴 글을 보내면 앞부분만 읽고 뒤는 버리면서도 아무 말이 없으므로,
+   * 보내는 길이에 맞춰 직접 잡아 준다.
+   *
+   * 한국어는 토큰 하나가 한 글자쯤이라 글자 수를 그대로 토큰 수로 보고
+   * (조금 넉넉하게 1.2로 나눈다) 답변 길이와 여유를 더한 뒤 2의 제곱으로 올린다.
+   * 문맥이 클수록 메모리를 많이 쓰므로 32768 에서 멈춘다. */
+  function contextFor(messages, maxTokens) {
+    const chars = messages.reduce((n, m) => n + String(m.content || '').length, 0);
+    const need = Math.ceil(chars / 1.2) + Number(maxTokens || 0) + 512;
+    const pow2 = 1 << Math.ceil(Math.log2(Math.max(2, need)));
+    return Math.min(32768, Math.max(4096, pow2));
   }
 
   async function nonStream(res, api) {
@@ -325,5 +350,6 @@
     ocrBase,
     ocrHealth,
     ocrImages,
+    contextFor,
   };
 })();

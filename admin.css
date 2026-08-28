@@ -461,3 +461,12 @@ button.seat:hover { transform: translateY(-1px); }
 .ocr-bar { height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
 .ocr-bar span { display: block; height: 100%; width: 0;
   background: var(--accent); border-radius: 999px; transition: width .25s ease; }
+
+/* 상담 자료 안의 과목별 성적 변화 — 안내문(.sheet)과 같은 계열색을 쓴다 */
+.grade-chart { --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+               --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
+  margin: 4px 0 18px; padding: 16px; border: 1px solid var(--border);
+  border-radius: var(--radius); background: #fcfdff; }
+.grade-title { margin: 0 0 12px; font-size: .95rem; font-weight: 800; color: var(--text); }
+.grade-span { margin-left: 8px; font-weight: 600; font-size: .82rem; color: var(--muted); }
+.grade-chart .note { margin: 10px 0 0; }

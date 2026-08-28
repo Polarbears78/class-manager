@@ -234,22 +234,59 @@
     return body.length > limit ? body.slice(0, limit) + '\n…(이하 생략)' : body;
   }
 
+  /* 글자 수 예산을 영역들에 나눠 준다.
+   *
+   * 영역마다 똑같이 자르면(예전 방식) 짧은 영역은 남고 긴 영역만 잘려,
+   * 정작 내용이 많은 세부능력·행동특성이 앞부분만 들어간다.
+   * 그래서 '고르게 나누고 남는 몫을 다시 돌리는' 방식을 쓴다.
+   *   1) 모두에게 똑같은 몫을 준다
+   *   2) 그 몫보다 짧은 영역은 통째로 넣고, 남긴 몫을 회수한다
+   *   3) 회수한 몫을 아직 모자란 영역들에 다시 고르게 나눠 준다
+   *   4) 더 나눠 줄 것이 없을 때까지 되풀이한다
+   * 전체가 예산 안에 들어가면 아무것도 자르지 않는다.
+   */
+  function budget(lengths, total) {
+    const out = lengths.slice();
+    const done = lengths.map(() => false);
+    let left = total, n = lengths.length;
+    for (let pass = 0; pass < 20 && n > 0 && left > 0; pass++) {
+      const share = Math.floor(left / n);
+      let used = 0, settled = 0;
+      lengths.forEach((len, i) => {
+        if (done[i]) return;
+        if (len <= share) { out[i] = len; done[i] = true; used += len; settled++; }
+      });
+      if (!settled) {                       // 남은 것은 모두 몫보다 길다 — 고르게 자른다
+        lengths.forEach((len, i) => { if (!done[i]) { out[i] = share; done[i] = true; } });
+        return out;
+      }
+      left -= used; n -= settled;
+    }
+    return out;
+  }
+
   function excerpt(student, picked, opts) {
-    const o = Object.assign({ maskName: true, limit: 1800 }, opts || {});
+    const o = Object.assign({ maskName: true, total: 30000 }, opts || {});
     const names = (picked && picked.length ? picked : student.sectionNames)
       .filter((n) => student.sections[n]);
 
     // 영역을 못 나눴거나, 나눈 것이 원문의 절반도 못 담으면 원문에서 알맹이를 고른다
     if (!names.length || coverage(student) < 0.5) {
-      return scrub(condense(student.raw, o.limit * 3), { maskName: o.maskName, name: student.name });
+      return scrub(condense(student.raw, o.total), { maskName: o.maskName, name: student.name });
     }
-    const joined = names.map((n) => {
-      let body = student.sections[n];
-      if (body.length > o.limit) body = body.slice(0, o.limit) + '\n…(이하 생략)';
+
+    const bodies = names.map((n) => student.sections[n]);
+    // 머리글('### 영역이름')이 차지하는 몫을 빼고 본문 예산을 잡는다
+    const overhead = names.reduce((a, n) => a + n.length + 6, 0);
+    const caps = budget(bodies.map((b) => b.length), Math.max(500, o.total - overhead));
+
+    const joined = names.map((n, i) => {
+      let body = bodies[i];
+      if (body.length > caps[i]) body = body.slice(0, caps[i]) + '\n…(이하 생략)';
       return `### ${n}\n${body}`;
     }).join('\n\n');
     return scrub(joined, { maskName: o.maskName, name: student.name });
   }
 
-  window.Saenggibu = { SECTIONS: SECTIONS.map((s) => s[0]), CORE, parse, scrub, excerpt, clean, coverage, condense };
+  window.Saenggibu = { SECTIONS: SECTIONS.map((s) => s[0]), CORE, parse, scrub, excerpt, clean, coverage, condense, budget };
 })();
