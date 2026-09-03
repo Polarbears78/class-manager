@@ -213,6 +213,7 @@
         map.set(key, {
           key,
           name: r.grade && r.term ? `${r.grade}학년 ${r.term}학기`
+              : r.grade ? `${r.grade}학년`
               : r.term ? `${r.term}학기` : '원점수',
           rows: [],
         });

@@ -152,9 +152,16 @@
 
     let grade = 0, term = 0;
     sectionText.split('\n').forEach((line) => {
-      // [1학년] 같은 머리글이 나오면 이후 줄의 학년으로 삼는다
-      const g = line.match(/\[?\s*(\d)\s*학\s*년\s*\]?/);
-      if (g && line.replace(/\s/g, '').length < 12) grade = Number(g[1]);
+      /* '[1학년]' 같은 머리글이 나오면 이후 줄의 학년으로 삼는다.
+       * OCR 이 대괄호 안 숫자를 흘리는 일이 잦아('[1학년]' → '학년]'),
+       * 숫자가 없으면 앞 학년의 다음 학년으로 센다. 표는 학년 순서대로 나온다.
+       * '2026학년도'는 머리글이 아니므로 걸러 낸다. */
+      const head = line.trim();
+      if (/^\[?\s*\d?\s*학\s*년\s*\]?$/.test(head)) {
+        const d = head.match(/(\d)/);
+        grade = d ? Number(d[1]) : grade + 1;
+        term = 0;
+      }
 
       const m = line.match(score);
       if (!m) return;
