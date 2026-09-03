@@ -132,33 +132,62 @@
   /* ── 교과 성적 표 훑기 ──────────────────────────────
    * 나이스 표기: 과목  원점수/과목평균(표준편차)  성취도(수강자수)  석차등급
    * PDF에서 뽑은 글은 칸이 흐트러지기 쉬워 '숫자/숫자(숫자)' 덩어리를 기준으로 찾는다. */
+  /* ── 교과 성적 훑기 ──────────────────────────────────────────
+   *
+   * 학교급에 따라 표 모양이 다르다.
+   *   중학교 : 학기 | 교과 | 과목 | 원점수/과목평균 | 성취도 | 수강자수
+   *   고등학교: 학기 | 교과 | 과목 | 단위 | 원점수/과목평균(표준편차) | 성취도(수강자수) | 석차등급
+   * 그래서 괄호 안 표준편차는 있어도 되고 없어도 되게 두었다.
+   *
+   * 자유학기제 학기는 원점수 없이 성취도 'P' 만 있어 점수로 잡히지 않는다 —
+   * 이때는 변화를 그릴 시점이 하나뿐이므로, 쓰는 쪽에서 막대로 그린다.
+   */
   function parseSubjects(sectionText) {
     if (!sectionText) return [];
     const out = [];
-    // 점수 덩어리는 줄 단위로 찾는다 — 과목 이름이 앞 줄의 표 머리글까지 끌어오지 않도록
-    const score = /(\d{1,3}(?:\.\d)?)\s*\/\s*(\d{1,3}(?:\.\d)?)\s*\(\s*(\d{1,3}(?:\.\d)?)\s*\)/;
-    const level = /([A-E])\s*\(\s*\d+\s*\)/;
+    // 원점수/과목평균 — 표준편차 괄호는 선택
+    const score = /(\d{1,3}(?:\.\d)?)\s*[/／]\s*(\d{1,3}(?:\.\d)?)(?:\s*\(\s*(\d{1,3}(?:\.\d)?)\s*\))?/;
+    const level = /\b([A-E])\b(?:\s*\(\s*\d+\s*\))?/;
+    const HEADER = /원점수|과목평균|표준편차|성취도|석차|등급|학점|단위|학기|이수|수강자|비고|교과/;
 
+    let grade = 0, term = 0;
     sectionText.split('\n').forEach((line) => {
+      // [1학년] 같은 머리글이 나오면 이후 줄의 학년으로 삼는다
+      const g = line.match(/\[?\s*(\d)\s*학\s*년\s*\]?/);
+      if (g && line.replace(/\s/g, '').length < 12) grade = Number(g[1]);
+
       const m = line.match(score);
       if (!m) return;
+      // 쪽 번호('3 / 9')·날짜 같은 작은 수 짝은 점수가 아니다
+      if (Number(m[1]) < 10 || Number(m[2]) < 10) return;
+
+      const before = line.slice(0, m.index);
+      // 줄 맨 앞의 홑숫자는 학기 칸이다
+      const t = before.match(/^\s*([1-4])\s/);
+      if (t) term = Number(t[1]);
+
       // 과목 이름 = 점수 바로 앞에 붙은 마지막 낱말
-      const nm = line.slice(0, m.index).match(/([가-힣A-Za-z][가-힣A-Za-z·]{1,9})\s*$/);
+      const nm = before.match(/([가-힣A-Za-z][가-힣A-Za-z·:.]{0,9})\s*$/);
       if (!nm) return;
-      const name = nm[1];
-      if (/원점수|과목평균|표준편차|성취도|석차|등급|학점|단위|학기|이수/.test(name)) return;
+      // OCR 이 가운뎃점을 : 이나 . 로 읽는 일이 잦다
+      const name = nm[1].replace(/[:.]/g, '·').replace(/·$/, '');
+      // 한 글자짜리는 과목 이름이 아니다 ('…24일 3 / 9' 같은 쪽 번호를 걸러 낸다)
+      if (name.length < 2 || HEADER.test(name)) return;
+
       const lv = line.slice(m.index + m[0].length).match(level);
       out.push({
+        grade, term,
         subject: name,
         score: Number(m[1]),
         avg: Number(m[2]),
-        sd: Number(m[3]),
+        sd: m[3] === undefined ? null : Number(m[3]),
         level: lv ? lv[1] : '',
       });
     });
-    // 같은 과목이 여러 학기 나오면 마지막 것만 남긴다
+
+    // 같은 학년·학기·과목이 두 번 잡히면 마지막 것만
     const seen = new Map();
-    out.forEach((r) => seen.set(r.subject, r));
+    out.forEach((r) => seen.set(`${r.grade}-${r.term}-${r.subject}`, r));
     return [...seen.values()];
   }
 

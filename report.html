@@ -179,9 +179,9 @@
       <p class="warn-box">⚠️ AI가 만든 <b>초안</b>입니다. 사실 관계와 표현을 선생님이 반드시 확인·수정한 뒤 사용해 주세요.
         생기부에 없는 내용이 섞여 있을 수 있습니다.</p>
       <section class="grade-chart" id="outGrades" hidden>
-        <h3 class="grade-title">과목별 성적 변화 <span class="grade-span" id="outGradeSpan"></span></h3>
+        <h3 class="grade-title"><span id="outGradeTitle">과목별 성적</span> <span class="grade-span" id="outGradeSpan"></span></h3>
         <div id="outGradeBody"></div>
-        <p class="note">[성적] 페이지에 입력한 점수로 그렸습니다. 생기부에서 읽어 낸 값이 아닙니다.</p>
+        <p class="note" id="outGradeFrom"></p>
       </section>
       <div class="prose" id="outBody"></div>
       <div class="row" style="flex-wrap:wrap;margin-top:16px" id="outTools" hidden>
@@ -576,14 +576,29 @@
       /* 과목별 성적 변화 — 안내문과 같은 그림(grades-chart.js).
        * 모델이 만든 글과 나란히 두면, 선생님이 초안의 성적 이야기가
        * 실제 점수와 맞는지 그 자리에서 대조할 수 있다. */
-      function showGrades(name) {
+      function showGrades(st) {
         const box = $('outGrades');
-        if (!name || typeof GradeChart === 'undefined') { box.hidden = true; return; }
-        const { html, caption } = GradeChart.gradeBlock(name, 'auto', '');
-        box.hidden = !html;
-        if (!html) return;
-        $('outGradeBody').innerHTML = html;
-        $('outGradeSpan').textContent = caption || '';
+        if (!st || typeof GradeChart === 'undefined') { box.hidden = true; return; }
+
+        // [성적] 페이지에 입력한 점수가 있으면 그것을 먼저 쓴다(시험별 변화가 보이므로).
+        // 없으면 생기부에서 읽어 낸 원점수·과목평균으로 그린다.
+        let out = GradeChart.gradeBlock(st.name, 'auto', '');
+        let from = '[성적] 페이지에 입력한 점수로 그렸습니다.';
+        if (!out.html) {
+          out = GradeChart.fromSaenggibu(st.subjects);
+          from = '생기부 교과학습발달상황에서 읽어 낸 값입니다. ' +
+                 (out.kind === 'bar'
+                   ? '점수가 한 학기치뿐이라 변화 대신 과목평균과 견주어 그렸습니다.'
+                   : '') +
+                 ' OCR 로 읽은 값이므로 숫자를 한 번 확인해 주세요.';
+        }
+        box.hidden = !out.html;
+        if (!out.html) return;
+        $('outGradeBody').innerHTML = out.html;
+        $('outGradeSpan').textContent = out.caption || '';
+        $('outGradeFrom').textContent = from;
+        // 시점이 하나뿐이면 '변화'라고 부르지 않는다
+        $('outGradeTitle').textContent = out.kind === 'bar' ? '과목별 성적' : '과목별 성적 변화';
       }
 
       // ── 성적·상담 기록 요약(같은 콘솔의 다른 페이지에서 가져옴) ──
@@ -767,7 +782,7 @@
         $('outCard').hidden = false;
         $('outTools').hidden = true;
         $('outWho').textContent = st.name + ' · ' + $('genPurpose').selectedOptions[0].textContent;
-        showGrades(st.name);
+        showGrades(st);
         $('outBody').innerHTML = '<p class="empty-hint">교내 서버에서 생성 중입니다… 모델 크기에 따라 1~3분 걸릴 수 있어요.</p>';
         $('genBtn').disabled = true;
         $('genStop').hidden = false;

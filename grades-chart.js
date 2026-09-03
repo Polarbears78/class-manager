@@ -194,8 +194,135 @@
     return { html, caption: examName };
   }
 
+  /* ══════════ 생기부에서 읽어 낸 성적 ══════════
+   *
+   * [성적] 페이지에 점수를 입력하지 않아도, 생기부 교과학습발달상황에서
+   * 읽어 낸 원점수·과목평균으로 바로 그린다.
+   *
+   * 학기가 둘 이상이면 과목별 변화를, 하나뿐이면 원점수와 과목평균을
+   * 나란히 놓은 막대를 그린다. 자유학기제 학기는 원점수가 없어 점수로
+   * 잡히지 않으므로, 중학교 생기부는 대개 막대 쪽이 된다.
+   */
+
+  // 학년·학기를 하나의 시점으로 묶는다
+  function termsOf(subjects) {
+    const map = new Map();
+    subjects.forEach((r) => {
+      const key = `${r.grade || 0}-${r.term || 0}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          name: r.grade && r.term ? `${r.grade}학년 ${r.term}학기`
+              : r.term ? `${r.term}학기` : '원점수',
+          rows: [],
+        });
+      }
+      map.get(key).rows.push(r);
+    });
+    return [...map.values()];
+  }
+
+  /* 원점수와 과목평균을 나란히 — 시점이 하나일 때 */
+  function subjectBars(rows) {
+    const subs = rows.slice().sort((a, b) => b.score - a.score);
+    if (!subs.length) return '';
+    const W = 560, LABEL = 74, RIGHT = 118, rowH = 26, PAD = 6;
+    const barW = W - LABEL - RIGHT;
+    const H = subs.length * rowH + PAD * 2 + 16;
+    const at = (v) => LABEL + Math.round(barW * Math.min(100, Math.max(0, v)) / 100);
+
+    let svg = `<svg viewBox="0 0 ${W} ${H}" class="chart-svg" role="img" aria-label="과목별 원점수와 과목평균">`;
+    subs.forEach((r, i) => {
+      const y = PAD + i * rowH;
+      svg += `<text x="0" y="${y + 14}" class="c-lab">${esc(r.subject)}</text>`;
+      svg += `<rect x="${LABEL}" y="${y + 4}" width="${barW}" height="14" rx="7" class="c-bg"/>`;
+      svg += `<rect x="${LABEL}" y="${y + 4}" width="${Math.max(2, at(r.score) - LABEL)}" height="14" rx="7" class="c-me"/>`;
+      svg += `<line x1="${at(r.avg)}" y1="${y + 1}" x2="${at(r.avg)}" y2="${y + 21}" class="c-avg"/>`;
+      svg += `<text x="${W - RIGHT + 8}" y="${y + 14}" class="c-val">${r.score}점 ` +
+             `<tspan class="c-sub">(반 ${r.avg.toFixed(1)})</tspan></text>`;
+    });
+    const ly = PAD + subs.length * rowH + 8;
+    svg += `<rect x="${LABEL}" y="${ly}" width="14" height="8" rx="4" class="c-me"/>`;
+    svg += `<text x="${LABEL + 20}" y="${ly + 8}" class="c-sub">원점수</text>`;
+    svg += `<line x1="${LABEL + 80}" y1="${ly - 2}" x2="${LABEL + 80}" y2="${ly + 12}" class="c-avg"/>`;
+    svg += `<text x="${LABEL + 88}" y="${ly + 8}" class="c-sub">과목평균</text>`;
+    return svg + '</svg>';
+  }
+
+  /* 과목별 표 — 반평균 대비 차이를 함께 실어 강약을 바로 읽게 한다 */
+  function subjectTable(terms) {
+    const subs = [];
+    terms.forEach((t) => t.rows.forEach((r) => {
+      if (!subs.includes(r.subject)) subs.push(r.subject);
+    }));
+    const one = terms.length === 1;
+    // 성취도는 OCR 이 통째로 흘리는 일이 잦다. 하나도 못 읽었으면 빈 열을 두지 않는다.
+    const hasLevel = terms.some((t) => t.rows.some((r) => r.level));
+    let h = '<table class="score-table"><thead><tr><th>과목</th>';
+    terms.forEach((t) => { h += `<th>${esc(t.name)}</th>`; });
+    h += one ? '<th>반평균 대비</th>' + (hasLevel ? '<th>성취도</th>' : '') : '<th>변화</th>';
+    h += '</tr></thead><tbody>';
+
+    subs.forEach((sub, i) => {
+      h += `<tr><th><span class="s-key" style="background:var(--s${(i % SERIES) + 1})"></span>${esc(sub)}</th>`;
+      const seen = [];
+      let last = null;
+      terms.forEach((t) => {
+        const r = t.rows.find((x) => x.subject === sub);
+        if (!r) { h += '<td class="s-none">—</td>'; return; }
+        seen.push(r.score); last = r;
+        h += `<td>${r.score}<small>반 ${r.avg.toFixed(1)}</small></td>`;
+      });
+      if (one) {
+        const d = last ? last.score - last.avg : 0;
+        h += `<td class="s-delta${d > 0 ? ' up' : d < 0 ? ' down' : ''}">` +
+             `${d > 0 ? '+' : ''}${d.toFixed(1)}</td>` +
+             (hasLevel ? `<td>${esc((last && last.level) || '—')}</td>` : '');
+      } else if (seen.length < 2) {
+        h += '<td class="s-none">—</td>';
+      } else {
+        const d = seen[seen.length - 1] - seen[0];
+        h += `<td class="s-delta${d > 0 ? ' up' : d < 0 ? ' down' : ''}">` +
+             `${d > 0 ? '▲ +' + d : d < 0 ? '▼ ' + d : '– 0'}</td>`;
+      }
+      h += '</tr>';
+    });
+    return h + '</tbody></table>';
+  }
+
+  /* 생기부에서 읽어 낸 과목 배열로 성적 칸을 만든다.
+   * → { html, caption, kind: 'trend' | 'bar' | '' } */
+  function fromSaenggibu(subjects) {
+    const rows = (subjects || []).filter((r) => typeof r.score === 'number' && typeof r.avg === 'number');
+    if (!rows.length) return { html: '', caption: '', kind: '' };
+
+    const terms = termsOf(rows).sort((a, b) => a.key.localeCompare(b.key));
+    if (terms.length >= 2) {
+      // 여러 학기가 있으면 시점별 점수를 시험처럼 다뤄 추이를 그린다
+      const subs = [];
+      terms.forEach((t) => t.rows.forEach((r) => { if (!subs.includes(r.subject)) subs.push(r.subject); }));
+      const exams = terms.map((t) => ({
+        name: t.name,
+        scores: { _: Object.fromEntries(t.rows.map((r) => [r.subject, r.score])) },
+        avg: Object.fromEntries(t.rows.map((r) => [r.subject, r.avg])),
+      }));
+      return {
+        html: trendSvg('_', exams, subs) + subjectTable(terms),
+        caption: `${terms[0].name} → ${terms[terms.length - 1].name}`,
+        kind: 'trend',
+      };
+    }
+    return {
+      html: subjectBars(terms[0].rows) + subjectTable(terms),
+      caption: terms[0].name === '원점수' ? '원점수와 과목평균'
+             : terms[0].name + ' · 원점수와 과목평균',
+      kind: 'bar',
+    };
+  }
+
   window.GradeChart = {
     SERIES, examsWith, classAvg, subjectsOf, usesTrend,
     scoreTable, trendSvg, barSvg, gradeBlock,
+    termsOf, subjectBars, subjectTable, fromSaenggibu,
   };
 })();
