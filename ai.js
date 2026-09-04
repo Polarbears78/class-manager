@@ -21,6 +21,7 @@
     timeout: 180,  // 초. 젯슨은 클라우드보다 느리므로 넉넉히
     ocr: '',       // 그림 글자 읽기 서버. 비우면 모델 서버와 같은 기기의 8404번
     inputChars: 30000, // 분석에 넣을 생기부 글자 수 상한
+    chunkChars: 10000, // 한 번에 읽을 글자 수. 0이면 나누지 않고 한 번에 보낸다
   };
 
   const load = () => {
@@ -107,6 +108,8 @@
    * 스트리밍이 막힌 서버(프록시 등)에서는 한 번에 받는 방식으로 물러선다. */
   async function chat(opts) {
     const s = load();
+    // 조각을 읽을 때는 짧게 답하게 해야 빠르다 — 호출마다 따로 정할 수 있게 둔다
+    const maxTokens = Number(opts.maxTokens || s.maxTokens);
     const base = normBase(s.base);
     if (!base) throw new Error('서버 주소를 먼저 입력해 주세요.');
     if (!s.model) throw new Error('사용할 모델을 먼저 선택해 주세요.');
@@ -126,14 +129,14 @@
 
     const url = base + (api === 'openai' ? '/v1/chat/completions' : '/api/chat');
     const body = api === 'openai'
-      ? { model: s.model, messages, stream: true, temperature: Number(s.temp), max_tokens: Number(s.maxTokens) }
+      ? { model: s.model, messages, stream: true, temperature: Number(s.temp), max_tokens: maxTokens }
       : {
           model: s.model, messages, stream: true,
           options: {
             temperature: Number(s.temp),
-            num_predict: Number(s.maxTokens),
+            num_predict: maxTokens,
             // 이걸 안 주면 Ollama는 2048 토큰만 읽고 나머지를 조용히 버린다
-            num_ctx: contextFor(messages, s.maxTokens),
+            num_ctx: contextFor(messages, maxTokens),
           },
         };
 

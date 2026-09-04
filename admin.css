@@ -470,3 +470,8 @@ button.seat:hover { transform: translateY(-1px); }
 .grade-title { margin: 0 0 12px; font-size: .95rem; font-weight: 800; color: var(--text); }
 .grade-span { margin-left: 8px; font-weight: 600; font-size: .82rem; color: var(--muted); }
 .grade-chart .note { margin: 10px 0 0; }
+
+/* 나눠 읽었을 때 조각별 메모 */
+.chunk-notes { margin-top: 22px; border-top: 1px solid var(--border); padding-top: 14px; }
+.chunk-notes .prose { margin-top: 10px; }
+.chunk-notes h4 { margin: 16px 0 6px; font-size: .9rem; color: var(--muted); }
