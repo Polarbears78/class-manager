@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>학부모 안내문 — 우리 반 관리 콘솔</title>
+  <meta name="description" content="상담 때 학부모께 드리는 A4 한 장 안내문 만들기" />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%84%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><b class="js-class">우리 반</b> <span>관리 콘솔</span></a>
+      <nav class="nav-links">
+        <a href="index.html">대시보드</a>
+        <a href="counsel.html">학생·상담</a>
+        <a href="grades.html">성적</a>
+        <a href="report.html">생기부 분석</a>
+        <a href="upload.html">생기부 업로드</a>
+        <a href="result.html">분석 결과</a>
+        <a href="handout.html" class="active">학부모 안내문</a>
+        <a href="manage.html">학급 도구</a>
+        <a href="guide.html">학급 안내</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="page-head no-print">
+      <h1>학부모 안내문</h1>
+      <p>상담 때 학부모께 드리는 <b>A4 한 장</b> 유인물을 만듭니다. 아래에서 내용을 채우면 오른쪽 미리보기가 곧바로 바뀌고, 그대로 인쇄하면 됩니다.</p>
+    </div>
+
+    <!-- ══════ 학교·담임 정보 ══════ -->
+    <section class="card no-print">
+      <h2 class="card-title">🏫 학교 · 담임 정보 <span class="tag" id="schoolTag">미설정</span></h2>
+      <p class="help">한 번 저장해 두면 모든 안내문 머리말에 자동으로 들어갑니다.</p>
+      <div class="log-grid">
+        <div class="field">
+          <label for="hSchool">학교 이름</label>
+          <input type="text" id="hSchool" maxlength="40" placeholder="예: 한빛중학교" />
+        </div>
+        <div class="field">
+          <label for="hYear">학년도 · 학기</label>
+          <input type="text" id="hYear" maxlength="30" placeholder="예: 2026학년도 1학기" />
+        </div>
+        <div class="field">
+          <label for="hTeacher">담임 성명</label>
+          <input type="text" id="hTeacher" maxlength="20" placeholder="예: 홍길동" />
+        </div>
+        <div class="field">
+          <label for="hContact">담임 연락처 <span class="opt">선택</span></label>
+          <input type="text" id="hContact" maxlength="40" placeholder="예: 학교 교무실 02-000-0000" />
+        </div>
+        <div class="field">
+          <label for="hHours">상담 가능 시간 <span class="opt">선택</span></label>
+          <input type="text" id="hHours" maxlength="60" placeholder="예: 평일 오후 3시~5시 (사전 연락 후)" />
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn" id="hSave">저장</button>
+        <span class="save-status" id="hStatus" style="text-align:left"></span>
+      </div>
+      <p class="note">연락처는 안내문에만 쓰이며 이 컴퓨터의 브라우저에만 저장됩니다.</p>
+    </section>
+
+    <div class="handout-grid">
+      <!-- ══════ 내용 채우기 ══════ -->
+      <section class="card no-print">
+        <h2 class="card-title">✍️ 내용 채우기</h2>
+
+        <div class="field">
+          <label for="hStudent">학생</label>
+          <select id="hStudent"><option value="">— 명단이 없습니다 —</option></select>
+        </div>
+
+        <div class="row" style="flex-wrap:wrap;margin-bottom:14px">
+          <button class="btn btn-ghost" id="hPull">📥 생기부 분석 초안에서 가져오기</button>
+          <span class="save-status" id="pullStatus" style="text-align:left"></span>
+        </div>
+
+        <div class="field">
+          <label for="hStrength">우리 아이의 강점 <span class="opt">한 줄에 하나씩</span></label>
+          <textarea id="hStrength" rows="4" placeholder="관찰한 것을 기록하는 습관이 있습니다&#10;친구의 어려움을 먼저 알아챕니다"></textarea>
+        </div>
+
+        <div class="field">
+          <label for="hHelp">가정에서 도와주시면 좋을 일 <span class="opt">한 줄에 하나씩</span></label>
+          <textarea id="hHelp" rows="4" placeholder="하루 20분 소리 내어 읽기를 함께 해 주세요&#10;주말에 한 주 계획을 같이 세워 주세요"></textarea>
+        </div>
+
+        <div class="field">
+          <label for="hNote">담임 한마디 <span class="opt">선택</span></label>
+          <textarea id="hNote" rows="3" placeholder="한 학기 동안 지켜본 소감을 짧게 적어 주세요."></textarea>
+        </div>
+
+        <label class="check-label"><input type="checkbox" id="hChart" checked /> 성적 넣기</label>
+        <div class="field" id="modeField" style="margin-top:10px">
+          <label for="hMode">성적 표시 방법</label>
+          <select id="hMode">
+            <option value="auto">자동 — 시험이 2회 이상이면 변화 표·그래프</option>
+            <option value="trend">과목별 변화 점수표 + 추이 그래프</option>
+            <option value="bar">한 시험만 — 본인 점수 · 반 평균 막대</option>
+          </select>
+        </div>
+        <div class="field" id="examField" style="margin-top:10px">
+          <label for="hExam">막대에 쓸 시험</label>
+          <select id="hExam"><option value="">— 성적 자료가 없습니다 —</option></select>
+        </div>
+
+        <label class="check-label"><input type="checkbox" id="hAttend" /> 출결 현황 넣기 <span class="opt">(생기부 분석에서 읽은 값)</span></label>
+
+        <div class="row" style="flex-wrap:wrap;margin-top:16px">
+          <button class="btn" id="hPrint">🖨️ 인쇄 · PDF 저장</button>
+          <button class="btn btn-ghost" id="hReset">내용 비우기</button>
+          <span class="save-status" id="saveStatus" style="text-align:left"></span>
+        </div>
+        <p class="note">입력한 내용은 학생별로 자동 저장되어, 다음에 같은 학생을 고르면 그대로 나옵니다.</p>
+      </section>
+
+      <!-- ══════ 미리보기 (실제 인쇄물) ══════ -->
+      <div>
+        <p class="sub-h no-print">미리보기 — 인쇄하면 이대로 나옵니다</p>
+        <div class="sheet" id="sheet">
+          <header class="sheet-head">
+            <p class="sheet-school" id="pSchool"></p>
+            <h1 class="sheet-title" id="pTitle">학생 학교생활 안내</h1>
+            <p class="sheet-sub" id="pSub"></p>
+          </header>
+
+          <section class="sheet-sec" id="secStrength">
+            <h2>우리 아이의 강점</h2>
+            <ul id="pStrength"></ul>
+          </section>
+
+          <section class="sheet-sec" id="secChart">
+            <h2>성적 <small id="pExamName"></small></h2>
+            <div id="pChart"></div>
+          </section>
+
+          <section class="sheet-sec" id="secAttend">
+            <h2>출결 현황</h2>
+            <p id="pAttend"></p>
+          </section>
+
+          <section class="sheet-sec" id="secHelp">
+            <h2>가정에서 도와주시면 좋을 일</h2>
+            <ol id="pHelp"></ol>
+          </section>
+
+          <section class="sheet-sec" id="secNote">
+            <h2>담임 한마디</h2>
+            <p id="pNote"></p>
+          </section>
+
+          <footer class="sheet-foot" id="pFoot"></footer>
+        </div>
+      </div>
+    </div>
+
+    <footer class="foot no-print"><span><span class="js-class">우리 반</span> 관리 콘솔 · 안내문 내용은 이 컴퓨터에만 저장됩니다</span></footer>
+  </main>
+
+  <script src="console.js"></script>
+  <script src="grades-chart.js"></script>
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      const load = (k, fb) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? fb; } catch { return fb; } };
+      const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+      const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const flash = (el, msg, ms) => { el.textContent = msg; if (ms !== 0) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, ms || 3000); };
+      const lines = (s) => String(s || '').split('\n').map((x) => x.replace(/^\s*[-*·]\s*/, '').trim()).filter(Boolean);
+
+      const SCHOOL_KEY = 'console-school';   // 대시보드 백업·초기화가 함께 다루도록 console- 접두사
+      const DRAFT_KEY = 'counsel-handout';   // 학생별 안내문 내용
+
+      let drafts = load(DRAFT_KEY, {});
+
+      /* ══════════ 학교 · 담임 정보 ══════════ */
+      const SF = [['hSchool', 'school'], ['hYear', 'year'], ['hTeacher', 'teacher'], ['hContact', 'contact'], ['hHours', 'hours']];
+      function loadSchool() {
+        const s = load(SCHOOL_KEY, {});
+        SF.forEach(([id, k]) => { $(id).value = s[k] || ''; });
+        $('schoolTag').textContent = s.school ? '설정됨' : '미설정';
+      }
+      function schoolData() {
+        const s = {};
+        SF.forEach(([id, k]) => { s[k] = $(id).value.trim(); });
+        return s;
+      }
+      $('hSave').addEventListener('click', () => {
+        save(SCHOOL_KEY, schoolData());
+        $('schoolTag').textContent = $('hSchool').value.trim() ? '설정됨' : '미설정';
+        flash($('hStatus'), '✓ 저장했습니다');
+        render();
+      });
+      SF.forEach(([id]) => $(id).addEventListener('input', render));
+
+      /* ══════════ 학생 목록 ══════════ */
+      function allNames() {
+        const roster = load('manage-roster', []);
+        const gdb = load('grades-data', { exams: [] });
+        const fromGrades = (gdb.exams || []).flatMap((e) => Object.keys(e.scores || {}));
+        const fromRecs = load('counsel-records', []).map((r) => r.name);
+        return [...new Set([...roster, ...fromGrades, ...fromRecs])].filter(Boolean);
+      }
+      function fillStudents() {
+        const names = allNames();
+        $('hStudent').innerHTML = names.length
+          ? names.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('')
+          : '<option value="">— 명단이 없습니다 —</option>';
+      }
+
+      /* ══════════ 시험 목록 ══════════ */
+      function fillExams() {
+        const gdb = load('grades-data', { exams: [] });
+        const withScores = (gdb.exams || []).filter((e) => Object.keys(e.scores || {}).length);
+        $('hExam').innerHTML = withScores.length
+          ? withScores.map((e) => `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join('')
+          : '<option value="">— 성적 자료가 없습니다 —</option>';
+        // 가장 최근 시험을 기본값으로
+        if (withScores.length) $('hExam').value = withScores[withScores.length - 1].id;
+      }
+
+      /* ══════════ 학생별 내용 불러오기·저장 ══════════ */
+      const FIELDS = ['hStrength', 'hHelp', 'hNote'];
+      function loadDraft() {
+        const d = drafts[$('hStudent').value] || {};
+        $('hStrength').value = d.strength || '';
+        $('hHelp').value = d.help || '';
+        $('hNote').value = d.note || '';
+        if (typeof d.chart === 'boolean') $('hChart').checked = d.chart;
+        if (typeof d.attend === 'boolean') $('hAttend').checked = d.attend;
+        if (d.mode) $('hMode').value = d.mode;
+        if (d.exam && [...$('hExam').options].some((o) => o.value === d.exam)) $('hExam').value = d.exam;
+      }
+      let saveTimer = null;
+      function saveDraft() {
+        const name = $('hStudent').value;
+        if (!name) return;
+        drafts[name] = {
+          strength: $('hStrength').value,
+          help: $('hHelp').value,
+          note: $('hNote').value,
+          chart: $('hChart').checked,
+          attend: $('hAttend').checked,
+          mode: $('hMode').value,
+          exam: $('hExam').value,
+        };
+        save(DRAFT_KEY, drafts);
+        flash($('saveStatus'), '✓ 자동 저장됨', 2000);
+      }
+      function touched() {
+        render();
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(saveDraft, 400);
+      }
+      FIELDS.forEach((id) => $(id).addEventListener('input', touched));
+      ['hChart', 'hAttend', 'hExam', 'hMode'].forEach((id) => $(id).addEventListener('change', touched));
+      $('hStudent').addEventListener('change', () => { loadDraft(); render(); });
+
+      $('hReset').addEventListener('click', () => {
+        if (!confirm('이 학생의 안내문 내용을 비울까요?')) return;
+        FIELDS.forEach((id) => { $(id).value = ''; });
+        saveDraft();
+        render();
+      });
+
+      /* ══════════ 생기부 분석 초안에서 가져오기 ══════════
+       * report.html에서 '상담 기록으로 저장'한 초안의 마크다운 제목을 찾아
+       * 강점 / 가정에서 도와주실 일 항목만 뽑아 채운다. */
+      function section(md, titleRe) {
+        const rows = String(md).split('\n');
+        let on = false;
+        const out = [];
+        for (const raw of rows) {
+          const line = raw.trim();
+          const head = line.match(/^#{1,4}\s*(.+)$/);
+          if (head) {
+            if (on) break;
+            if (titleRe.test(head[1].trim())) { on = true; }
+            continue;
+          }
+          if (on && line) out.push(line.replace(/^\s*[-*·]\s*/, '').replace(/^\d+[.)]\s*/, '').replace(/\*\*/g, ''));
+        }
+        return out;
+      }
+      function latestDraft(name) {
+        return load('counsel-records', [])
+          .filter((r) => r.name === name && /생기부 분석 초안/.test(String(r.text)))
+          .sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+      }
+      // quiet=true면 조용히 채우기만 한다(페이지 진입 시 자동 채우기용)
+      function pull(quiet) {
+        const name = $('hStudent').value;
+        if (!name) { if (!quiet) flash($('pullStatus'), '학생을 먼저 골라 주세요'); return false; }
+        const rec = latestDraft(name);
+        if (!rec) {
+          if (!quiet) flash($('pullStatus'), '이 학생의 저장된 분석 초안이 없습니다. [생기부 분석]에서 만든 뒤 “상담 기록으로 저장”을 눌러 주세요.', 9000);
+          return false;
+        }
+        const strength = section(rec.text, /^강점/);
+        const help = section(rec.text, /가정에서 도와주/);
+        if (!strength.length && !help.length) {
+          if (!quiet) flash($('pullStatus'), '초안에서 강점·가정 도움 항목을 찾지 못했습니다. 직접 적어 주세요.', 8000);
+          return false;
+        }
+        if (strength.length) $('hStrength').value = strength.join('\n');
+        if (help.length) $('hHelp').value = help.join('\n');
+        touched();
+        flash($('pullStatus'), `✓ 강점 ${strength.length}개 · 도움 ${help.length}개를 가져왔습니다`, 6000);
+        return true;
+      }
+      $('hPull').addEventListener('click', () => pull(false));
+
+      /* ══════════ 성적 ══════════
+       * 그리는 일은 grades-chart.js 가 맡는다(상담 자료 페이지와 같은 그림). */
+      const { examsWith, usesTrend, gradeBlock } = GradeChart;
+
+      /* ══════════ 출결 ══════════
+       * report.html이 저장한 초안 안의 '출결 요약' 문장을 재사용한다. */
+      function attendText(name) {
+        const rec = load('counsel-records', [])
+          .filter((r) => r.name === name && /생기부 분석 초안/.test(String(r.text)))
+          .sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+        if (!rec) return '';
+        const m = String(rec.text).match(/수업일수[^\n]*/);
+        return m ? m[0].trim() : '';
+      }
+
+      /* ══════════ 미리보기 그리기 ══════════ */
+      function render() {
+        const s = schoolData();
+        const name = $('hStudent').value;
+        const cls = (function () { try { return localStorage.getItem('console-class-name') || ''; } catch { return ''; } })();
+
+        $('pSchool').textContent = [s.school, s.year].filter(Boolean).join(' · ');
+        $('pSchool').hidden = !$('pSchool').textContent;
+        $('pTitle').textContent = name ? `${name} 학생 학교생활 안내` : '학생 학교생활 안내';
+        $('pSub').textContent = [cls, s.teacher ? `담임 ${s.teacher}` : ''].filter(Boolean).join(' · ');
+        $('pSub').hidden = !$('pSub').textContent;
+
+        const st = lines($('hStrength').value);
+        $('pStrength').innerHTML = st.map((x) => `<li>${esc(x)}</li>`).join('');
+        $('secStrength').hidden = !st.length;
+
+        const hp = lines($('hHelp').value);
+        $('pHelp').innerHTML = hp.map((x) => `<li>${esc(x)}</li>`).join('');
+        $('secHelp').hidden = !hp.length;
+
+        const note = $('hNote').value.trim();
+        $('pNote').textContent = note;
+        $('secNote').hidden = !note;
+
+        let chartOn = false;
+        if ($('hChart').checked && name) {
+          const { html, caption } = gradeBlock(name, $('hMode').value, $('hExam').value);
+          $('pChart').innerHTML = html;
+          $('pExamName').textContent = caption ? `(${caption})` : '';
+          chartOn = !!html;
+        }
+        $('secChart').hidden = !chartOn;
+
+        const at = $('hAttend').checked && name ? attendText(name) : '';
+        $('pAttend').textContent = at;
+        $('secAttend').hidden = !at;
+
+        const foot = [s.contact ? `담임 연락처: ${s.contact}` : '', s.hours ? `상담 가능 시간: ${s.hours}` : ''].filter(Boolean);
+        $('pFoot').innerHTML = foot.map((x) => `<span>${esc(x)}</span>`).join('');
+        $('pFoot').hidden = !foot.length;
+
+        // 막대를 그릴 때만 시험 고르는 칸이 필요하다
+        $('modeField').hidden = !$('hChart').checked;
+        $('examField').hidden = !$('hChart').checked || (!!name && usesTrend(name, $('hMode').value));
+      }
+
+      $('hPrint').addEventListener('click', () => window.print());
+
+      /* ══════════ 시작 ══════════ */
+      loadSchool();
+      fillStudents();
+      fillExams();
+      // 다른 페이지에서 ?student=이름 으로 넘어온 경우 그 학생을 고른다
+      const want = new URLSearchParams(location.search).get('student');
+      if (want && [...$('hStudent').options].some((o) => o.value === want)) $('hStudent').value = want;
+      loadDraft();
+      // 아직 아무것도 안 적힌 학생이면 저장된 분석 초안에서 자동으로 채워 준다
+      if (!$('hStrength').value.trim() && !$('hHelp').value.trim()) pull(true);
+      render();
+    })();
+  </script>
+</body>
+</html>

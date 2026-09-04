@@ -116,6 +116,7 @@ textarea { resize: vertical; }
   transition: background .12s ease, transform .12s ease;
 }
 .btn:hover { background: var(--accent-dark); }
+a.btn { text-decoration: none; display: inline-block; }   /* 링크를 버튼처럼 쓸 때 */
 .btn:active { transform: scale(.98); }
 .btn-block { display: block; width: 100%; text-align: center; }
 .btn-danger { background: var(--danger); }
@@ -335,6 +336,116 @@ button.seat:hover { transform: translateY(-1px); }
 }
 .chat-send:hover { background: var(--accent-dark); }
 
+/* ===== 생기부 분석 페이지 ===== */
+.det-sum { cursor: pointer; font-size: .85rem; font-weight: 600; color: var(--muted); }
+.det-sum:hover { color: var(--accent); }
+
+/* 서버 연결 상태 표시등 */
+.ai-dot {
+  display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+  background: #cbd5e1; margin-left: 10px; vertical-align: middle; flex: 0 0 9px;
+}
+.ai-dot[data-state="ok"] { background: var(--ok); }
+.ai-dot[data-state="bad"] { background: var(--danger); }
+.ai-dot[data-state="busy"] { background: #f59e0b; animation: ai-pulse 1s ease-in-out infinite; }
+@keyframes ai-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+.ai-state { font-size: .78rem; font-weight: 600; color: var(--muted); margin-left: 5px; }
+
+.warn-box {
+  background: var(--warn-bg); color: var(--warn-text); border-radius: 9px;
+  padding: 11px 14px; font-size: .85rem; line-height: 1.6; margin: 0 0 14px;
+}
+
+/* 선택 가능한 칩(생기부 영역 고르기) */
+.chip-sub { color: var(--muted); font-weight: 600; margin-left: 4px; font-size: .78rem; }
+.chip-sel { transition: border-color .12s ease, background .12s ease; }
+.chip-sel:hover { border-color: var(--accent); }
+.chip-sel.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-dark); }
+.chip-sel.on .chip-sub { color: var(--accent); }
+
+/* 생성된 상담 자료 본문 — 모델이 쓴 '##'가 h3, '###'가 h4로 들어온다 */
+.prose { font-size: .93rem; line-height: 1.75; }
+.prose h2, .prose h3 {
+  font-size: 1rem; color: var(--accent-dark); margin: 22px 0 8px;
+  padding-bottom: 5px; border-bottom: 1px solid var(--border);
+}
+.prose h2:first-child, .prose h3:first-child { margin-top: 4px; }
+.prose h4, .prose h5 { font-size: .92rem; margin: 16px 0 6px; color: #334155; }
+.prose p { margin: 8px 0; }
+.prose ul, .prose ol { margin: 8px 0; padding-left: 22px; }
+.prose li { margin: 4px 0; }
+.prose b { color: var(--text); }
+
+/* ===== 학부모 안내문 (A4 한 장) ===== */
+.handout-grid { display: grid; grid-template-columns: 1fr; gap: 20px; align-items: start; }
+@media (min-width: 1060px) { .handout-grid { grid-template-columns: 400px 1fr; } }
+
+.sheet {
+  background: #fff; color: #0f172a; border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 30px 34px; max-width: 700px;
+  font-size: .92rem; line-height: 1.7;
+}
+.sheet-head { text-align: center; border-bottom: 2px solid var(--accent); padding-bottom: 14px; margin-bottom: 20px; }
+.sheet-school { margin: 0 0 6px; font-size: .8rem; color: var(--muted); font-weight: 600; letter-spacing: .02em; }
+.sheet-title { margin: 0; font-size: 1.32rem; font-weight: 800; letter-spacing: -.02em; }
+.sheet-sub { margin: 7px 0 0; font-size: .84rem; color: var(--muted); font-weight: 600; }
+
+.sheet-sec { margin-bottom: 20px; }
+.sheet-sec:last-of-type { margin-bottom: 0; }
+.sheet-sec h2 {
+  margin: 0 0 9px; font-size: .95rem; font-weight: 700; color: var(--accent-dark);
+  padding-left: 10px; border-left: 4px solid var(--accent);
+}
+.sheet-sec h2 small { color: var(--muted); font-weight: 600; font-size: .82rem; margin-left: 5px; }
+.sheet-sec ul, .sheet-sec ol { margin: 0; padding-left: 22px; }
+.sheet-sec li { margin: 5px 0; }
+.sheet-sec p { margin: 0; white-space: pre-wrap; }
+
+.sheet-foot {
+  margin-top: 24px; padding-top: 13px; border-top: 1px dashed var(--border);
+  display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: .82rem; color: var(--muted); font-weight: 600;
+}
+
+/* 성적 계열 색 — dataviz 기본 팔레트(라이트 모드 검증본) */
+.sheet { --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+         --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948; }
+
+/* 과목별 변화 점수표 — 그래프의 범례 겸 정확한 값 표 */
+.score-table { width: 100%; border-collapse: collapse; font-size: .84rem; margin-top: 12px; }
+.score-table th, .score-table td { padding: 5px 8px; text-align: center; border-bottom: 1px solid var(--border); }
+.score-table thead th { font-size: .76rem; font-weight: 700; color: var(--muted); border-bottom: 1.5px solid #cbd5e1; }
+.score-table tbody th { text-align: left; font-weight: 700; white-space: nowrap; }
+.score-table td small { display: block; color: var(--muted); font-weight: 600; font-size: .7rem; }
+.score-table .s-none { color: var(--muted); }
+.score-table .s-delta { font-weight: 700; white-space: nowrap; }
+.score-table .s-delta.up { color: var(--ok); }
+.score-table .s-delta.down { color: var(--danger); }
+.s-key { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+
+/* 과목별 추이 그래프 */
+.trend-svg { width: 100%; max-width: 560px; height: auto; display: block; }
+.trend-svg .t-grid { stroke: var(--border); stroke-width: 1; }
+.trend-svg .t-ax { font-size: 11px; font-weight: 600; fill: var(--muted); }
+.trend-svg .t-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.trend-svg .t-dot { stroke: #fff; stroke-width: 2; }
+.trend-svg .t-end { font-size: 11px; font-weight: 700; fill: #334155; }
+
+/* 안내문 성적 그래프 */
+/* 넓은 화면·인쇄에서 그래프 글자가 본문보다 커지지 않도록 원래 크기를 상한으로 둔다 */
+.chart-svg { width: 100%; max-width: 560px; height: auto; display: block; }
+.chart-svg .c-lab { font-size: 12px; font-weight: 700; fill: #334155; }
+.chart-svg .c-bg { fill: #eef2ff; }
+.chart-svg .c-me { fill: #4f46e5; }
+.chart-svg .c-avg { stroke: #0f172a; stroke-width: 2; stroke-dasharray: 3 2; }
+.chart-svg .c-val { font-size: 12px; font-weight: 700; fill: #0f172a; }
+.chart-svg .c-sub { font-size: 11px; font-weight: 600; fill: #64748b; }
+
+@media print {
+  .handout-grid { display: block; }
+  .sheet { border: none; box-shadow: none; border-radius: 0; padding: 0; max-width: none; }
+  .sheet-sec { break-inside: avoid; }
+}
+
 /* ===== 인쇄(PDF 저장) ===== */
 @media print {
   .nav, .foot, .back-btn, .no-print, .chat-fab, .chat-panel, .toolbar { display: none !important; }
@@ -345,3 +456,22 @@ button.seat:hover { transform: translateY(-1px); }
   .manage-grid .card { margin-bottom: 12px; }
   textarea, input, select { border: none; padding: 0; resize: none; }
 }
+
+/* OCR 진행 막대 — 그림에서 글자를 읽는 동안 어디쯤인지 보여 준다 */
+.ocr-bar { height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.ocr-bar span { display: block; height: 100%; width: 0;
+  background: var(--accent); border-radius: 999px; transition: width .25s ease; }
+
+/* 상담 자료 안의 과목별 성적 변화 — 안내문(.sheet)과 같은 계열색을 쓴다 */
+.grade-chart { --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+               --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
+  margin: 4px 0 18px; padding: 16px; border: 1px solid var(--border);
+  border-radius: var(--radius); background: #fcfdff; }
+.grade-title { margin: 0 0 12px; font-size: .95rem; font-weight: 800; color: var(--text); }
+.grade-span { margin-left: 8px; font-weight: 600; font-size: .82rem; color: var(--muted); }
+.grade-chart .note { margin: 10px 0 0; }
+
+/* 나눠 읽었을 때 조각별 메모 */
+.chunk-notes { margin-top: 22px; border-top: 1px solid var(--border); padding-top: 14px; }
+.chunk-notes .prose { margin-top: 10px; }
+.chunk-notes h4 { margin: 16px 0 6px; font-size: .9rem; color: var(--muted); }

@@ -1,0 +1,328 @@
+/* 학교생활기록부(생기부) 텍스트 파서 + 개인정보 지우개
+ *
+ * PDF·텍스트에서 뽑아낸 생기부 글을 받아
+ *   1) 학생별로 자르고
+ *   2) 영역(출결·창체·교과·행특 …)별로 나누고
+ *   3) 모델에 넘기기 전에 주민등록번호·연락처·주소 같은 식별정보를 지운다.
+ *
+ * 나이스 출력물의 줄바꿈·띄어쓰기는 판마다 조금씩 달라서
+ * 모든 항목을 완벽히 뽑아내지는 못한다. 뽑히지 않은 부분도 원문 그대로
+ * 모델에 함께 넘기므로, 여기서의 추출은 화면에 미리 보여 주기 위한 보조 수단이다.
+ */
+(function () {
+  // 나이스 생기부의 영역 이름 — 표기 흔들림(가운뎃점·띄어쓰기)을 함께 인식
+  const SECTIONS = [
+    ['인적·학적사항', /인\s*적\s*[·ㆍ,]?\s*학\s*적\s*사\s*항|인\s*적\s*사\s*항|학\s*적\s*사\s*항/],
+    ['출결상황', /출\s*결\s*상\s*황/],
+    ['수상경력', /수\s*상\s*경\s*력/],
+    ['자격증 및 인증 취득상황', /자\s*격\s*증\s*및\s*인\s*증|자격증\s*및\s*인증\s*취득/],
+    ['진로희망사항', /진\s*로\s*희\s*망\s*사\s*항/],
+    ['창의적 체험활동상황', /창\s*의\s*적\s*체\s*험\s*활\s*동/],
+    ['자유학기활동상황', /자\s*유\s*학\s*기\s*활\s*동/],
+    ['교과학습발달상황', /교\s*과\s*학\s*습\s*발\s*달\s*상\s*황/],
+    ['독서활동상황', /독\s*서\s*활\s*동\s*상\s*황/],
+    ['행동특성 및 종합의견', /행\s*동\s*특\s*성\s*및\s*종\s*합\s*의\s*견|행동특성/],
+  ];
+
+  // 상담 자료를 만들 때 특히 중요한 영역 — 기본으로 켜 둔다
+  const CORE = ['창의적 체험활동상황', '교과학습발달상황', '행동특성 및 종합의견', '출결상황', '수상경력', '진로희망사항'];
+
+  const clean = (s) => String(s || '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[ \t ]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  /* ── 개인정보 지우개 ──────────────────────────────
+   * 이름 가림은 선택이지만, 아래 항목은 언제나 지운다.
+   * 상담 자료를 만드는 데 필요 없는 정보이기 때문. */
+  function scrub(text, opts) {
+    const o = opts || {};
+    let t = String(text || '');
+
+    t = t.replace(/\d{6}\s*[-–—]\s*\d{7}/g, '(주민등록번호 삭제)');
+    t = t.replace(/01[016-9][-–.\s]?\d{3,4}[-–.\s]?\d{4}/g, '(연락처 삭제)');
+    t = t.replace(/0\d{1,2}[-–.\s]\d{3,4}[-–.\s]\d{4}/g, '(연락처 삭제)');
+    t = t.replace(/[\w.+-]+@[\w-]+\.[\w.]+/g, '(이메일 삭제)');
+    // '주소', '거주지' 라벨이 붙은 줄 전체
+    t = t.replace(/^.*(?:주\s*소|거\s*주\s*지)\s*[:：].*$/gm, '(주소 삭제)');
+    // 라벨 없이 나오는 도로명·지번 주소
+    t = t.replace(/[가-힣]+(?:특별시|광역시|특별자치시|특별자치도|도)\s+[가-힣]+[시군구][^\n]{0,40}/g, '(주소 삭제)');
+
+    if (o.maskName && o.name) {
+      const re = new RegExp(o.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+      t = t.replace(re, '○○○');
+    }
+    if (o.maskName) {
+      // 보호자 성명도 함께 가린다 — '보호자(모) 성명 : 홍길동', '부 : 홍길동' 두 표기 모두
+      t = t.replace(/(보호자[^\n:：]{0,10})[:：]\s*[가-힣]{2,4}/g, '$1: ○○○');
+      t = t.replace(/^(\s*[부모]\s*)[:：]\s*[가-힣]{2,4}/gm, '$1: ○○○');
+    }
+    return t;
+  }
+
+  /* ── 학생 나누기 ──────────────────────────────
+   * 여러 학생이 한 파일에 이어 붙은 출력물을 '인적·학적사항' 머리글 기준으로 자른다. */
+  function splitStudents(text) {
+    const t = clean(text);
+    const head = /(?:^|\n)\s*(?:\d+\s*[.)]\s*)?인\s*적\s*[·ㆍ,]?\s*학\s*적\s*사\s*항/g;
+    const at = [];
+    let m;
+    while ((m = head.exec(t))) at.push(m.index);
+    if (at.length < 2) return [t];
+
+    const out = [];
+    for (let i = 0; i < at.length; i++) {
+      out.push(t.slice(at[i], i + 1 < at.length ? at[i + 1] : t.length).trim());
+    }
+    return out.filter((s) => s.length > 80);
+  }
+
+  /* 이름표(성명·이름)는 줄 첫머리에 있을 때만 믿는다.
+   * OCR 로 읽은 글에서는 문장 속 '설명'이 '성명'으로 잘못 읽히는 일이 잦아,
+   * 아무 데나 걸리게 두면 엉뚱한 낱말을 이름으로 집는다. */
+  function findName(block) {
+    const pats = [
+      /(?:^|\n)\s*성\s*명\s*[:：]\s*([가-힣]{2,5})/,
+      /(?:^|\n)\s*이\s*름\s*[:：]\s*([가-힣]{2,5})/,
+      /(?:^|\n)\s*성\s*명\s*\n\s*([가-힣]{2,5})/,
+    ];
+    for (const p of pats) {
+      const m = block.match(p);
+      if (m) return m[1].trim();
+    }
+    return '';
+  }
+
+  function findNumbers(block) {
+    const out = {};
+    // '2026학년도'의 26을 학년으로 잘못 읽지 않도록 연도 표기를 먼저 걷어 낸다
+    const t = block.replace(/\d{4}\s*학\s*년\s*도/g, ' ');
+    let m = t.match(/(\d{1,2})\s*학\s*년(?!\s*도)/);
+    if (m) out.grade = m[1];
+    m = t.match(/(\d{1,2})\s*반/);
+    if (m) out.classNo = m[1];
+    m = t.match(/(\d{1,2})\s*번(?!\s*호)/);
+    if (m) out.number = m[1];
+    return out;
+  }
+
+  /* ── 영역 나누기 ── */
+  function splitSections(block) {
+    const marks = [];
+    SECTIONS.forEach(([name, re]) => {
+      const g = new RegExp(re.source, 'g');
+      let m;
+      while ((m = g.exec(block))) marks.push({ at: m.index, name });
+    });
+    marks.sort((a, b) => a.at - b.at);
+
+    const sections = {};
+    marks.forEach((mk, i) => {
+      const end = i + 1 < marks.length ? marks[i + 1].at : block.length;
+      // 끝에 딸려 온 다음 영역의 번호('3.')는 떼어 낸다
+      const body = block.slice(mk.at, end).replace(/\n\s*\d{1,2}\s*[.)]\s*$/, '').trim();
+      if (body.length < 12) return;
+      // 같은 영역이 여러 번(학년별 등) 나오면 이어 붙인다
+      sections[mk.name] = sections[mk.name] ? sections[mk.name] + '\n\n' + body : body;
+    });
+    return sections;
+  }
+
+  /* ── 교과 성적 표 훑기 ──────────────────────────────
+   * 나이스 표기: 과목  원점수/과목평균(표준편차)  성취도(수강자수)  석차등급
+   * PDF에서 뽑은 글은 칸이 흐트러지기 쉬워 '숫자/숫자(숫자)' 덩어리를 기준으로 찾는다. */
+  /* ── 교과 성적 훑기 ──────────────────────────────────────────
+   *
+   * 학교급에 따라 표 모양이 다르다.
+   *   중학교 : 학기 | 교과 | 과목 | 원점수/과목평균 | 성취도 | 수강자수
+   *   고등학교: 학기 | 교과 | 과목 | 단위 | 원점수/과목평균(표준편차) | 성취도(수강자수) | 석차등급
+   * 그래서 괄호 안 표준편차는 있어도 되고 없어도 되게 두었다.
+   *
+   * 자유학기제 학기는 원점수 없이 성취도 'P' 만 있어 점수로 잡히지 않는다 —
+   * 이때는 변화를 그릴 시점이 하나뿐이므로, 쓰는 쪽에서 막대로 그린다.
+   */
+  function parseSubjects(sectionText) {
+    if (!sectionText) return [];
+    const out = [];
+    // 원점수/과목평균 — 표준편차 괄호는 선택
+    const score = /(\d{1,3}(?:\.\d)?)\s*[/／]\s*(\d{1,3}(?:\.\d)?)(?:\s*\(\s*(\d{1,3}(?:\.\d)?)\s*\))?/;
+    const level = /\b([A-E])\b(?:\s*\(\s*\d+\s*\))?/;
+    const HEADER = /원점수|과목평균|표준편차|성취도|석차|등급|학점|단위|학기|이수|수강자|비고|교과/;
+
+    let grade = 0, term = 0;
+    sectionText.split('\n').forEach((line) => {
+      /* '[1학년]' 같은 머리글이 나오면 이후 줄의 학년으로 삼는다.
+       * OCR 이 대괄호 안 숫자를 흘리는 일이 잦아('[1학년]' → '학년]'),
+       * 숫자가 없으면 앞 학년의 다음 학년으로 센다. 표는 학년 순서대로 나온다.
+       * '2026학년도'는 머리글이 아니므로 걸러 낸다. */
+      const head = line.trim();
+      if (/^\[?\s*\d?\s*학\s*년\s*\]?$/.test(head)) {
+        const d = head.match(/(\d)/);
+        grade = d ? Number(d[1]) : grade + 1;
+        term = 0;
+      }
+
+      const m = line.match(score);
+      if (!m) return;
+      // 쪽 번호('3 / 9')·날짜 같은 작은 수 짝은 점수가 아니다
+      if (Number(m[1]) < 10 || Number(m[2]) < 10) return;
+
+      const before = line.slice(0, m.index);
+      // 줄 맨 앞의 홑숫자는 학기 칸이다
+      const t = before.match(/^\s*([1-4])\s/);
+      if (t) term = Number(t[1]);
+
+      // 과목 이름 = 점수 바로 앞에 붙은 마지막 낱말
+      const nm = before.match(/([가-힣A-Za-z][가-힣A-Za-z·:.]{0,9})\s*$/);
+      if (!nm) return;
+      // OCR 이 가운뎃점을 : 이나 . 로 읽는 일이 잦다
+      const name = nm[1].replace(/[:.]/g, '·').replace(/·$/, '');
+      // 한 글자짜리는 과목 이름이 아니다 ('…24일 3 / 9' 같은 쪽 번호를 걸러 낸다)
+      if (name.length < 2 || HEADER.test(name)) return;
+
+      const lv = line.slice(m.index + m[0].length).match(level);
+      out.push({
+        grade, term,
+        subject: name,
+        score: Number(m[1]),
+        avg: Number(m[2]),
+        sd: m[3] === undefined ? null : Number(m[3]),
+        level: lv ? lv[1] : '',
+      });
+    });
+
+    // 같은 학년·학기·과목이 두 번 잡히면 마지막 것만
+    const seen = new Map();
+    out.forEach((r) => seen.set(`${r.grade}-${r.term}-${r.subject}`, r));
+    return [...seen.values()];
+  }
+
+  /* ── 출결 훑기 ── */
+  function parseAttendance(sectionText) {
+    if (!sectionText) return null;
+    const grab = (kw) => {
+      const m = sectionText.match(new RegExp(kw + '\\s*[:：]?\\s*(\\d{1,3})'));
+      return m ? Number(m[1]) : null;
+    };
+    const a = {
+      수업일수: grab('수업일수'),
+      결석: grab('결석'),
+      지각: grab('지각'),
+      조퇴: grab('조퇴'),
+      결과: grab('결과'),
+    };
+    return Object.values(a).some((v) => v !== null) ? a : null;
+  }
+
+  /* 파일 하나의 텍스트 → 학생 목록 */
+  /* parse(글, { single })
+   *   single: 여러 학생으로 나누지 않고 통째로 한 명으로 본다.
+   *           OCR 로 읽은 글은 영역 머리글이 흐트러져 잘못 나뉘므로,
+   *           한 학생의 파일임이 분명할 때 이 선택을 쓴다. */
+  function parse(rawText, opts) {
+    const blocks = (opts && opts.single) ? [clean(rawText)] : splitStudents(rawText);
+    return blocks.map((block, i) => {
+      const sections = splitSections(block);
+      const name = findName(block);
+      return Object.assign({
+        id: 'sgb-' + Date.now() + '-' + i,
+        name: name || `학생 ${i + 1}`,
+        nameFound: !!name,
+        raw: block,
+        sections,
+        sectionNames: Object.keys(sections),
+        subjects: parseSubjects(sections['교과학습발달상황']),
+        attendance: parseAttendance(sections['출결상황']),
+      }, findNumbers(block));
+    });
+  }
+
+  /* 모델에 넘길 발췌문 만들기
+   *   student : parse()가 돌려준 학생 하나
+   *   picked  : 넣을 영역 이름 배열
+   *   opts    : { maskName, limit } — limit은 영역별 글자 수 상한(작은 모델 보호) */
+  /* 영역 머리글을 얼마나 믿을 수 있는가.
+   * 나눈 영역들의 길이 합이 원문의 절반도 안 되면, 머리글을 제대로 못 읽은 것이다
+   * (OCR 로 읽은 글에서 흔하다 — '3. 수상경력' 이 '3, 수삼경력' 처럼 나온다).
+   * 이때 잡힌 영역만 넘기면 원문 대부분을 버리게 되므로 원문 쪽을 쓴다. */
+  function coverage(student) {
+    const raw = (student.raw || '').replace(/\s/g, '').length;
+    if (!raw) return 1;
+    const got = Object.values(student.sections || {})
+      .reduce((n, body) => n + String(body).replace(/\s/g, '').length, 0);
+    return got / raw;
+  }
+
+  /* 영역을 못 나눈 글에서 알맹이만 고른다.
+   * 생기부 한 쪽을 통째로 읽으면 표 칸 부스러기('3', '나', '2학기' 같은 조각)가
+   * 잔뜩 섞인다. 어느 정도 길고 한글이 많은 줄만 남기면 서술형 내용이 살아남는다. */
+  function condense(text, limit) {
+    const keep = [];
+    String(text).split('\n').forEach((line) => {
+      const l = line.trim();
+      if (l.length < 20) return;
+      const ko = (l.match(/[가-힣]/g) || []).length;
+      if (ko / l.length < 0.3) return;
+      keep.push(l);
+    });
+    const body = (keep.length ? keep : String(text).split('\n')).join('\n');
+    return body.length > limit ? body.slice(0, limit) + '\n…(이하 생략)' : body;
+  }
+
+  /* 글자 수 예산을 영역들에 나눠 준다.
+   *
+   * 영역마다 똑같이 자르면(예전 방식) 짧은 영역은 남고 긴 영역만 잘려,
+   * 정작 내용이 많은 세부능력·행동특성이 앞부분만 들어간다.
+   * 그래서 '고르게 나누고 남는 몫을 다시 돌리는' 방식을 쓴다.
+   *   1) 모두에게 똑같은 몫을 준다
+   *   2) 그 몫보다 짧은 영역은 통째로 넣고, 남긴 몫을 회수한다
+   *   3) 회수한 몫을 아직 모자란 영역들에 다시 고르게 나눠 준다
+   *   4) 더 나눠 줄 것이 없을 때까지 되풀이한다
+   * 전체가 예산 안에 들어가면 아무것도 자르지 않는다.
+   */
+  function budget(lengths, total) {
+    const out = lengths.slice();
+    const done = lengths.map(() => false);
+    let left = total, n = lengths.length;
+    for (let pass = 0; pass < 20 && n > 0 && left > 0; pass++) {
+      const share = Math.floor(left / n);
+      let used = 0, settled = 0;
+      lengths.forEach((len, i) => {
+        if (done[i]) return;
+        if (len <= share) { out[i] = len; done[i] = true; used += len; settled++; }
+      });
+      if (!settled) {                       // 남은 것은 모두 몫보다 길다 — 고르게 자른다
+        lengths.forEach((len, i) => { if (!done[i]) { out[i] = share; done[i] = true; } });
+        return out;
+      }
+      left -= used; n -= settled;
+    }
+    return out;
+  }
+
+  function excerpt(student, picked, opts) {
+    const o = Object.assign({ maskName: true, total: 30000 }, opts || {});
+    const names = (picked && picked.length ? picked : student.sectionNames)
+      .filter((n) => student.sections[n]);
+
+    // 영역을 못 나눴거나, 나눈 것이 원문의 절반도 못 담으면 원문에서 알맹이를 고른다
+    if (!names.length || coverage(student) < 0.5) {
+      return scrub(condense(student.raw, o.total), { maskName: o.maskName, name: student.name });
+    }
+
+    const bodies = names.map((n) => student.sections[n]);
+    // 머리글('### 영역이름')이 차지하는 몫을 빼고 본문 예산을 잡는다
+    const overhead = names.reduce((a, n) => a + n.length + 6, 0);
+    const caps = budget(bodies.map((b) => b.length), Math.max(500, o.total - overhead));
+
+    const joined = names.map((n, i) => {
+      let body = bodies[i];
+      if (body.length > caps[i]) body = body.slice(0, caps[i]) + '\n…(이하 생략)';
+      return `### ${n}\n${body}`;
+    }).join('\n\n');
+    return scrub(joined, { maskName: o.maskName, name: student.name });
+  }
+
+  window.Saenggibu = { SECTIONS: SECTIONS.map((s) => s[0]), CORE, parse, scrub, excerpt, clean, coverage, condense, budget };
+})();
