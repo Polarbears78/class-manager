@@ -295,7 +295,10 @@ async def handle(r, w):
             h = await r.readline()
             if not h or h == b"\r\n":
                 break
-        path, _, qs = parts[1].partition("?")
+        target = parts[1]
+        if target.startswith("http://"):  # 절대 URL 형식 요청 대응
+            target = "/" + target[7:].partition("/")[2]
+        path, _, qs = target.partition("?")
         q = parse_qs(qs)
 
         if path in ("/", "/index.html"):
@@ -379,7 +382,14 @@ async def handle(r, w):
                     name = new_run("cal")
                     await send_json(w, {"ok": True, "rs_air": rs_air, "r0": state["r0"], "file": name})
         else:
-            await send(w, "404 Not Found", "text/plain", "not found")
+            if path == "/favicon.ico":
+                await send(w, "204 No Content", "text/plain", "")
+            else:
+                # 휴대폰의 인터넷 연결 확인(캡티브 포털) 요청 등 → 측정 화면으로 이동
+                await send(w, "302 Found", "text/html; charset=utf-8",
+                           '<meta http-equiv="refresh" content="0;url=http://%s/">'
+                           '<a href="http://%s/">NH3 측정 화면 열기</a>' % (state["ip"], state["ip"]),
+                           "Location: http://%s/\r\n" % state["ip"])
     except Exception as e:
         try:
             await send(w, "500 Internal Server Error", "text/plain", str(e))
