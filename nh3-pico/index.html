@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NH3 측정기</title>
+<style>
+:root{--bg:#f1f5f9;--card:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;--accent:#4f46e5;--soft:#eef2ff;--danger:#e11d48;--warn:#92400e;--warnbg:#fffbeb;--ok:#059669}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+main{max-width:760px;margin:0 auto;padding:16px}
+h1{font-size:1.25rem;margin:4px 0 12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
+.card h2{font-size:.95rem;margin:0 0 10px}
+.big{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.big b{font-size:2.6rem;color:var(--accent);font-variant-numeric:tabular-nums}
+.big span{color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:10px}
+.kv{background:var(--bg);border-radius:10px;padding:8px 10px}
+.kv small{display:block;color:var(--muted);font-size:.75rem}
+.kv span{font-weight:700;font-variant-numeric:tabular-nums}
+.warn{background:var(--warnbg);color:var(--warn);border-radius:10px;padding:8px 12px;font-size:.88rem;margin-top:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}
+input,select{font:inherit;padding:8px 10px;border:1px solid var(--border);border-radius:8px;min-width:0;flex:1}
+button{font:inherit;font-weight:600;padding:8px 14px;border:0;border-radius:8px;background:var(--accent);color:#fff;cursor:pointer}
+button.ghost{background:var(--soft);color:var(--accent)}
+button.danger{background:#fff1f2;color:var(--danger)}
+canvas{width:100%;height:180px;display:block}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+td{padding:7px 4px;border-top:1px solid var(--border)}
+td.r{text-align:right;white-space:nowrap}
+.cur{color:var(--ok);font-weight:700}
+.muted{color:var(--muted);font-size:.82rem}
+</style>
+</head>
+<body>
+<main>
+<h1>🧪 암모니아(NH₃) 측정기 · Pico 2 W</h1>
+
+<section class="card">
+  <div class="big"><b id="ppm">—</b><span>ppm (추정)</span></div>
+  <div class="grid">
+    <div class="kv"><small>Rs/R0</small><span id="ratio">—</span></div>
+    <div class="kv"><small>센서 출력 전압</small><span id="sv">—</span></div>
+    <div class="kv"><small>Rs</small><span id="rs">—</span></div>
+    <div class="kv"><small>Pico 시각</small><span id="clock">—</span></div>
+  </div>
+  <div class="warn" id="warmup" hidden></div>
+  <div class="warn" id="full" hidden>플래시 공간이 부족해 기록을 멈췄습니다. 파일을 내려받은 뒤 삭제하세요.</div>
+</section>
+
+<section class="card">
+  <h2>최근 변화 — NH₃ 농도 (ppm, 추정)</h2>
+  <canvas id="cv"></canvas>
+  <p class="muted" id="cvInfo"></p>
+</section>
+
+<section class="card">
+  <h2>기록</h2>
+  <p class="muted">기록 중: <b id="curFile">—</b> · 간격 <b id="ivNow">—</b>초 · <span id="logState"></span></p>
+  <div class="row">
+    <input id="note" maxlength="60" placeholder="실험 표시 (예: 암모니아수 뚜껑 엶)">
+    <button id="markBtn">📍 표시</button>
+  </div>
+  <div class="row">
+    <input id="label" maxlength="20" placeholder="새 기록 이름 (영문·숫자, 예: group1)">
+    <button id="newBtn" class="ghost">＋ 새 기록 시작</button>
+    <button id="pauseBtn" class="ghost">⏸ 일시정지</button>
+  </div>
+</section>
+
+<section class="card">
+  <h2>저장된 파일 · 다운로드</h2>
+  <table id="files"></table>
+  <p class="muted" id="free"></p>
+</section>
+
+<section class="card">
+  <h2>설정</h2>
+  <div class="row">
+    <span class="muted">기록 간격(초)</span>
+    <input id="iv" type="number" min="1" max="600" style="max-width:100px">
+    <button id="ivBtn" class="ghost">적용</button>
+  </div>
+  <div class="row">
+    <span class="muted">센서 종류</span>
+    <select id="model"></select>
+  </div>
+  <div class="row">
+    <button id="calBtn" class="ghost">🌬️ 청정공기 교정 (R0 설정)</button>
+    <button id="timeBtn" class="ghost">🕒 휴대폰 시각으로 맞추기</button>
+  </div>
+  <p class="muted">R0 = <b id="r0">—</b> kΩ <span id="calState"></span><br>
+  교정은 예열(최소 3분, 처음 사용 시 24시간 이상 권장) 후 환기된 실외·창가 공기에서 하세요.
+  ppm은 데이터시트 곡선에 의한 <b>추정값</b>이며, 온도·습도 영향을 받습니다.</p>
+</section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const api = (p) => fetch(p, { cache: 'no-store' }).then((r) => r.json());
+const f = (v, n) => (v === null || v === undefined) ? '—' : Number(v).toFixed(n);
+const pad = (n) => String(n).padStart(2, '0');
+let modelsFilled = false;
+
+function localIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+const syncTime = () => api('/api/time?t=' + localIso());
+
+async function refresh() {
+  try {
+    const s = await api('/api/status');
+    if (!s.time_synced) await syncTime();   // AP 모드: 접속한 기기의 시각으로 자동 설정
+    const L = s.last || {};
+    $('ppm').textContent = f(L.ppm, 1);
+    $('ratio').textContent = f(L.ratio, 3);
+    $('sv').textContent = L.sensor_v == null ? '—' : f(L.sensor_v, 3) + ' V';
+    $('rs').textContent = L.rs == null ? '—' : f(L.rs, 2) + ' kΩ';
+    $('clock').textContent = s.time ? s.time.slice(11) : '미설정';
+    const left = s.warmup_s - s.uptime;
+    $('warmup').hidden = left <= 0;
+    $('warmup').textContent = `예열 중 — ${Math.ceil(left / 60)}분 남음. 이 구간 데이터는 warmup=1로 표시됩니다.`;
+    $('full').hidden = !s.full;
+    $('curFile').textContent = s.file || '—';
+    $('ivNow').textContent = s.interval;
+    $('logState').textContent = s.logging ? '● 기록 중' : '⏸ 일시정지';
+    $('pauseBtn').textContent = s.logging ? '⏸ 일시정지' : '▶ 재개';
+    $('pauseBtn').dataset.on = s.logging ? '0' : '1';
+    $('r0').textContent = f(s.r0, 2);
+    $('calState').textContent = s.calibrated ? '(교정됨)' : '(미교정 — 기본값)';
+    if (!modelsFilled) {
+      $('model').innerHTML = s.models.map((m) => `<option ${m === s.model ? 'selected' : ''}>${m}</option>`).join('');
+      $('iv').value = s.interval;
+      modelsFilled = true;
+    }
+    draw(await api('/api/recent'));
+  } catch (e) { /* 일시적 연결 끊김 무시 */ }
+}
+
+function draw(pts) {
+  const cv = $('cv'), dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
+  const v = pts.filter((p) => p[1] != null);
+  if (v.length < 2) { $('cvInfo').textContent = '데이터 수집 중…'; return; }
+  const ys = v.map((p) => p[1]);
+  let lo = Math.min(...ys), hi = Math.max(...ys);
+  lo = Math.max(0, lo); if (hi - lo < 1) { hi = lo + 1; }
+  const x0 = v[0][0], x1 = v[v.length - 1][0];
+  const X = (t) => 36 + (W - 44) * (t - x0) / Math.max(1, x1 - x0);
+  const Y = (y) => 8 + (H - 26) * (1 - (y - lo) / (hi - lo));
+  g.strokeStyle = '#e2e8f0'; g.fillStyle = '#64748b'; g.font = '11px sans-serif';
+  [lo, (lo + hi) / 2, hi].forEach((y) => { g.beginPath(); g.moveTo(36, Y(y)); g.lineTo(W - 8, Y(y)); g.stroke(); g.fillText(y.toFixed(1), 0, Y(y) + 4); });
+  g.strokeStyle = '#4f46e5'; g.lineWidth = 2; g.beginPath();
+  v.forEach((p, i) => (i ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1]))));
+  g.stroke();
+  $('cvInfo').textContent = `최근 ${Math.round((x1 - x0) / 60)}분 · 최저 ${Math.min(...ys).toFixed(1)} · 최고 ${Math.max(...ys).toFixed(1)} ppm`;
+}
+
+async function loadFiles() {
+  const r = await api('/api/files');
+  $('files').innerHTML = r.files.slice().reverse().map((x) => `
+    <tr><td class="${x.name === r.current ? 'cur' : ''}">${x.name}${x.name === r.current ? ' (기록 중)' : ''}</td>
+    <td class="r">${(x.size / 1024).toFixed(1)} KB</td>
+    <td class="r"><a href="/download?f=${encodeURIComponent(x.name)}" download><button class="ghost">⬇ 받기</button></a>
+    ${x.name === r.current ? '' : `<button class="danger" data-del="${x.name}">삭제</button>`}</td></tr>`).join('');
+  $('free').textContent = `플래시 여유 공간: ${r.free_kb} KB`;
+}
+
+$('files').addEventListener('click', async (e) => {
+  const n = e.target.dataset.del;
+  if (!n || !confirm(`${n} 파일을 삭제할까요? 먼저 내려받았는지 확인하세요.`)) return;
+  const r = await api('/api/delete?f=' + encodeURIComponent(n));
+  if (!r.ok) alert(r.msg);
+  loadFiles();
+});
+$('markBtn').onclick = async () => {
+  const n = $('note').value.trim() || '표시';
+  await api('/api/mark?note=' + encodeURIComponent(n));
+  $('note').value = '';
+};
+$('newBtn').onclick = async () => {
+  const r = await api('/api/new?label=' + encodeURIComponent($('label').value.trim()));
+  $('label').value = ''; loadFiles(); refresh();
+  alert('새 기록 시작: ' + r.file);
+};
+$('pauseBtn').onclick = async () => { await api('/api/logging?on=' + $('pauseBtn').dataset.on); refresh(); };
+$('ivBtn').onclick = async () => { await api('/api/interval?s=' + $('iv').value); refresh(); };
+$('model').onchange = async () => { await api('/api/model?m=' + encodeURIComponent($('model').value)); refresh(); };
+$('timeBtn').onclick = async () => { await syncTime(); refresh(); };
+$('calBtn').onclick = async () => {
+  if (!confirm('지금 센서가 깨끗한 공기 중에 있나요? 현재 Rs로 R0를 다시 설정합니다.\n(교정 후에는 새 기록 파일이 자동으로 시작됩니다)')) return;
+  $('calBtn').disabled = true;
+  const r = await api('/api/calibrate');
+  $('calBtn').disabled = false;
+  alert(r.ok ? `교정 완료: Rs(공기) ${r.rs_air.toFixed(2)} kΩ → R0 ${r.r0.toFixed(2)} kΩ\n새 기록: ${r.file}` : r.msg);
+  refresh(); loadFiles();
+};
+
+refresh(); loadFiles();
+setInterval(refresh, 3000);
+setInterval(loadFiles, 30000);
+</script>
+</body>
+</html>

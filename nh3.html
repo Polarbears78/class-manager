@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#4f46e5" />
+  <title>NH₃ 측정 데이터 분석</title>
+  <meta name="description" content="Pico 2 W 암모니아 측정기 CSV 업로드 · 그래프 · 통계 · ppm 재계산" />
+  <link rel="stylesheet" href="admin.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AA%3C/text%3E%3C/svg%3E" />
+  <style>
+    .drop {
+      display: block; border: 2px dashed var(--border); border-radius: var(--radius); padding: 28px 16px; text-align: center;
+      color: var(--muted); cursor: pointer; transition: border-color .12s ease, background .12s ease;
+    }
+    .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+    .drop b { display: block; font-size: 1.02rem; color: var(--text); margin-bottom: 4px; }
+    .ds { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--border); font-size: .9rem; }
+    .ds:first-child { border-top: 0; }
+    .ds .sw { width: 14px; height: 14px; border-radius: 4px; flex: 0 0 14px; }
+    .ds .nm { font-weight: 700; word-break: break-all; }
+    .ds .meta { color: var(--muted); font-size: .8rem; }
+    .ds .grow { flex: 1; min-width: 0; }
+    .ds input[type="text"] { width: 120px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font: inherit; font-size: .85rem; }
+    .opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+    .opts label { display: block; font-size: .8rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+    .opts select, .opts input[type="number"] { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font: inherit; background: #fff; }
+    .chart-box { position: relative; }
+    #chart { width: 100%; height: 380px; display: block; touch-action: none; }
+    .tip {
+      position: absolute; pointer-events: none; background: rgba(15, 23, 42, .92); color: #fff; font-size: .78rem;
+      padding: 6px 9px; border-radius: 8px; white-space: nowrap; transform: translate(-50%, -110%); line-height: 1.45;
+    }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .82rem; color: var(--muted); margin-top: 8px; }
+    .legend i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+    .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .hidden { display: none !important; }
+    .pill { display: inline-block; font-size: .72rem; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+    .pill.warn { background: var(--warn-bg); color: var(--warn-text); }
+    .wire { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem; background: var(--bg); border-radius: 10px; padding: 12px; overflow-x: auto; white-space: pre; line-height: 1.5; }
+    .manage-grid > * { min-width: 0; }
+    @media (max-width: 600px) { #chart { height: 300px; } .ds { flex-wrap: wrap; } }
+  </style>
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><b class="js-class">우리 반</b> <span>관리 콘솔</span></a>
+      <nav class="nav-links">
+        <a href="index.html">대시보드</a>
+        <a href="counsel.html">학생·상담</a>
+        <a href="grades.html">성적</a>
+        <a href="manage.html">학급 도구</a>
+        <a href="guide.html">학급 안내</a>
+        <a href="nh3.html" class="active">NH₃ 측정</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="page-head">
+      <h1>🧪 암모니아(NH₃) 측정 데이터 분석</h1>
+      <p>Pico 2 W 측정기에서 내려받은 CSV를 올리면 그래프·통계를 보여 줍니다. 파일은 이 브라우저 안에서만 처리되며 어디에도 전송되지 않습니다.</p>
+    </div>
+
+    <!-- 업로드 -->
+    <section class="card">
+      <h2 class="card-title">📤 CSV 업로드</h2>
+      <label class="drop" id="drop">
+        <b>여기로 CSV 파일을 끌어다 놓거나 클릭해서 선택</b>
+        여러 파일을 한 번에 올리면 같은 그래프에 겹쳐 비교합니다 (예: 모둠별 측정)
+        <input type="file" id="fileIn" accept=".csv,text/csv" multiple hidden />
+      </label>
+      <div id="dsList" style="margin-top:12px"></div>
+      <div class="row" style="flex-wrap:wrap;margin-top:8px">
+        <button class="btn btn-ghost" id="sampleBtn">예시 데이터 보기</button>
+        <button class="btn btn-danger hidden" id="clearBtn">모두 지우기</button>
+      </div>
+    </section>
+
+    <div id="work" class="hidden">
+      <!-- 옵션 -->
+      <section class="card">
+        <h2 class="card-title">⚙️ 표시 · 계산 설정</h2>
+        <div class="opts">
+          <div>
+            <label for="yMode">세로축</label>
+            <select id="yMode">
+              <option value="ppm">NH₃ 농도 (ppm, 추정)</option>
+              <option value="ratio">Rs/R0 (센서 저항비)</option>
+              <option value="rs">Rs (kΩ)</option>
+              <option value="v">센서 출력 전압 (V)</option>
+            </select>
+          </div>
+          <div>
+            <label for="xMode">가로축</label>
+            <select id="xMode">
+              <option value="elapsed">경과 시간 (분) — 여러 파일 비교용</option>
+              <option value="clock">측정 시각</option>
+            </select>
+          </div>
+          <div>
+            <label for="r0Mode">R0 (기준 저항) 사용 방식</label>
+            <select id="r0Mode">
+              <option value="file">파일에 기록된 값</option>
+              <option value="baseline">기준선 구간을 청정공기로 간주</option>
+              <option value="manual">직접 입력</option>
+            </select>
+          </div>
+          <div id="baseWrap">
+            <label for="baseMin">기준선 구간 (예열 이후 처음 N분)</label>
+            <input type="number" id="baseMin" min="0.5" step="0.5" value="2" />
+          </div>
+          <div id="manWrap" class="hidden">
+            <label for="r0Man">R0 직접 입력 (kΩ)</label>
+            <input type="number" id="r0Man" min="0.01" step="0.01" value="20" />
+          </div>
+          <div>
+            <label for="curve">감도 곡선</label>
+            <select id="curve">
+              <option value="file">파일에 기록된 센서</option>
+              <option value="MQ-137">MQ-137 (ppm = 39.54·r^−3.802)</option>
+              <option value="MQ-135">MQ-135 (ppm = 102.2·r^−2.473)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="flex-wrap:wrap;margin-top:12px;gap:18px">
+          <label class="check-label"><input type="checkbox" id="hideWarm" checked /> 예열 구간 제외</label>
+          <label class="check-label"><input type="checkbox" id="logY" /> 세로축 로그 눈금</label>
+          <label class="check-label"><input type="checkbox" id="refLines" checked /> 노출기준선 (25·35 ppm)</label>
+          <label class="check-label"><input type="checkbox" id="smooth" /> 이동평균 (5점)</label>
+        </div>
+      </section>
+
+      <!-- 그래프 -->
+      <section class="card">
+        <h2 class="card-title">📈 그래프</h2>
+        <div class="chart-box">
+          <canvas id="chart"></canvas>
+          <div class="tip hidden" id="tip"></div>
+        </div>
+        <div class="legend" id="legend"></div>
+        <div class="row" style="flex-wrap:wrap;margin-top:12px">
+          <button class="btn btn-ghost" id="pngBtn">🖼️ 그래프 PNG 저장</button>
+          <button class="btn btn-ghost" id="csvBtn">📥 계산 결과 CSV (엑셀용)</button>
+        </div>
+      </section>
+
+      <!-- 통계 -->
+      <section class="card">
+        <h2 class="card-title">📊 요약 통계 <span class="pill" id="statUnit"></span></h2>
+        <div class="table-wrap"><table class="stats-table" id="statTbl"></table></div>
+        <p class="note" id="statNote"></p>
+      </section>
+
+      <!-- 표시 -->
+      <section class="card" id="markCard">
+        <h2 class="card-title">📍 실험 표시 (측정기에서 입력한 메모)</h2>
+        <div class="table-wrap"><table class="stats-table" id="markTbl"></table></div>
+      </section>
+    </div>
+
+    <!-- 안내 -->
+    <h2 class="section-h">측정기 준비 · 유의점</h2>
+    <div class="manage-grid">
+      <section class="card">
+        <h2 class="card-title">🔌 배선 (MQ 계열 3핀 모듈 기준)</h2>
+<div class="wire">모듈 VCC ── Pico VBUS (핀 40, 5 V · USB 전원일 때)
+모듈 GND ── Pico GND  (핀 38)
+모듈 OUT ── 10 kΩ ──┬── Pico GP26 / ADC0 (핀 31)
+                    10 kΩ
+                    │
+                   GND</div>
+        <p class="help" style="margin-top:10px">OUT 전압은 최대 5 V까지 올라가므로 <b>분압 없이 GP26에 직접 연결하지 마세요</b> (ADC 허용 3.3 V 초과).
+        저항값·모듈의 부하저항 RL은 <code>config.py</code>에 입력합니다. 자세한 절차는 <code>nh3-pico/README.md</code>를 참고하세요.</p>
+      </section>
+      <section class="card">
+        <h2 class="card-title">⚠️ 해석 시 유의점</h2>
+        <ul class="help" style="margin:0;padding-left:18px">
+          <li>ppm은 데이터시트 감도 곡선을 근사한 <b>추정값</b>입니다. 금속산화물 센서는 NH₃ 외 환원성 기체(알코올·H₂S 등)와 온도·습도에도 반응하므로 <b>상대 변화(Rs/R0)</b> 해석이 더 신뢰할 만합니다.</li>
+          <li>노출기준선(TWA 25 ppm, STEL 35 ppm, 고용노동부 화학물질 노출기준)은 참고 표시이며, 이 측정기로 작업환경 안전 여부를 판정할 수 없습니다.</li>
+          <li>처음 사용하는 센서는 24시간 이상 통전(번인) 후, 매 측정 전 최소 3분 이상 예열하세요.</li>
+          <li>진한 암모니아수는 환기된 곳에서 소량만 사용하고, 센서를 용액에 직접 닿게 하지 마세요.</li>
+        </ul>
+      </section>
+    </div>
+
+    <footer class="foot"><span>NH₃ 측정 데이터 분석 · 업로드한 파일은 이 브라우저에서만 처리됩니다</span></footer>
+  </main>
+
+  <script src="console.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const COLORS = ['#4f46e5', '#e11d48', '#059669', '#d97706', '#0891b2', '#7c3aed', '#db2777', '#65a30d'];
+    const CURVES = { 'MQ-137': { A: 39.54, B: -3.802, CA: 3.6 }, 'MQ-135': { A: 102.2, B: -2.473, CA: 3.6 } };
+    const Y_LABEL = { ppm: 'NH₃ (ppm, 추정)', ratio: 'Rs/R0', rs: 'Rs (kΩ)', v: '센서 전압 (V)' };
+    const Y_DIG = { ppm: 1, ratio: 3, rs: 2, v: 3 };
+    let sets = [];   // { name, label, color, meta, rows: [{t, up, v, rs, ratio, ppm, warm, note}] }
+
+    // ── CSV 파싱 ──────────────────────────────────────────
+    function parseCsv(text, name) {
+      const meta = {};
+      const lines = text.replace(/^﻿/, '').split(/\r?\n/);
+      let header = null;
+      const rows = [];
+      for (const raw of lines) {
+        const line = raw.trim();
+        if (!line) continue;
+        if (line.startsWith('#')) {
+          line.slice(1).split(',').forEach((kv) => {
+            const i = kv.indexOf('=');
+            if (i > 0) meta[kv.slice(0, i).trim()] = kv.slice(i + 1).trim();
+          });
+          continue;
+        }
+        const cells = line.split(',');
+        if (!header) { header = cells.map((c) => c.trim().toLowerCase()); continue; }
+        const o = {};
+        header.forEach((h, i) => { o[h] = (cells[i] ?? '').trim(); });
+        rows.push(o);
+      }
+      if (!header) throw new Error('헤더가 없습니다');
+      const has = (k) => header.includes(k);
+      if (!has('sensor_v') && !has('ppm') && !has('ratio')) throw new Error('sensor_v / ppm / ratio 열이 없습니다');
+      const num = (s) => (s === '' || s == null || isNaN(+s) ? null : +s);
+      const out = rows.map((o, idx) => {
+        const t = o.time ? Date.parse(o.time.replace(' ', 'T')) : NaN;
+        return {
+          t: isNaN(t) ? null : t,
+          up: num(o.uptime_s) ?? idx,
+          v: num(o.sensor_v), rs0: num(o.rs_kohm), ratio0: num(o.ratio), ppm0: num(o.ppm),
+          warm: o.warmup === '1', note: o.note || '',
+        };
+      });
+      return { name, label: meta.label || name.replace(/\.csv$/i, ''), meta, rows: out };
+    }
+
+    // ── 재계산 ────────────────────────────────────────────
+    function curveFor(ds) {
+      const sel = $('curve').value;
+      if (sel !== 'file') return CURVES[sel];
+      const A = parseFloat(ds.meta.curve_a), B = parseFloat(ds.meta.curve_b);
+      if (!isNaN(A) && !isNaN(B)) return { A, B, CA: parseFloat(ds.meta.clean_air_ratio) || 3.6 };
+      return CURVES[ds.meta.model] || CURVES['MQ-137'];
+    }
+
+    function compute(ds) {
+      const vc = parseFloat(ds.meta.vc), rl = parseFloat(ds.meta.rl_eff_kohm);
+      const canRs = !isNaN(vc) && !isNaN(rl);
+      const cv = curveFor(ds);
+      let rows = ds.rows.map((r) => {
+        let rs = r.rs0;
+        if (canRs && r.v != null && r.v > 0.02 && r.v < vc - 0.02) rs = rl * (vc - r.v) / r.v;
+        return { ...r, rs };
+      });
+      if ($('hideWarm').checked) rows = rows.filter((r) => !r.warm || r.note);
+      const keep = $('hideWarm').checked ? rows.filter((r) => !r.warm) : rows;
+      const marks = rows.filter((r) => r.note);
+      rows = keep;
+      const t0 = rows.length ? rows[0].up : 0;
+
+      // R0 결정
+      const mode = $('r0Mode').value;
+      let r0 = parseFloat(ds.meta.r0_kohm), r0Src = '파일';
+      if (mode === 'manual') { r0 = parseFloat($('r0Man').value); r0Src = '직접 입력'; }
+      else if (mode === 'baseline') {
+        const win = (parseFloat($('baseMin').value) || 2) * 60;
+        const b = rows.filter((r) => r.up - t0 <= win && r.rs != null).map((r) => r.rs);
+        if (b.length) { r0 = b.reduce((a, c) => a + c, 0) / b.length / cv.CA; r0Src = `기준선 ${b.length}점`; }
+      }
+      const okR0 = isFinite(r0) && r0 > 0;
+      rows = rows.map((r) => {
+        let ratio = r.ratio0, ppm = r.ppm0;
+        if (okR0 && r.rs != null) { ratio = r.rs / r0; ppm = cv.A * Math.pow(ratio, cv.B); }
+        else if (okR0 && r.rs == null) { ratio = null; ppm = null; }
+        return { ...r, ratio, ppm, x: (r.up - t0) / 60 };
+      });
+      if ($('smooth').checked) {
+        ['ppm', 'ratio', 'rs', 'v'].forEach((k) => {
+          const src = rows.map((r) => r[k]);
+          rows.forEach((r, i) => {
+            const w = src.slice(Math.max(0, i - 2), i + 3).filter((v) => v != null);
+            r[k] = (src[i] == null || !w.length) ? src[i] : w.reduce((a, c) => a + c, 0) / w.length;
+          });
+        });
+      }
+      return { rows, marks: marks.map((m) => ({ ...m, x: (m.up - t0) / 60 })), r0: okR0 ? r0 : null, r0Src, t0 };
+    }
+
+    // ── 그래프 ────────────────────────────────────────────
+    const cvs = $('chart');
+    let plot = null;   // 마지막으로 그린 좌표계 (툴팁용)
+
+    function niceTicks(lo, hi, n) {
+      const span = hi - lo || 1;
+      const step0 = span / n, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+      const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => span / s <= n) || 10 * mag;
+      const out = [];
+      for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) out.push(+v.toFixed(10));
+      return out;
+    }
+
+    function fmtClock(ms) {
+      const d = new Date(ms);
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function draw(results) {
+      const key = $('yMode').value, logY = $('logY').checked;
+      const clock = $('xMode').value === 'clock' && results.every((r) => r.res.rows.some((p) => p.t));
+      const dpr = window.devicePixelRatio || 1;
+      const W = cvs.clientWidth, H = cvs.clientHeight;
+      cvs.width = W * dpr; cvs.height = H * dpr;
+      const g = cvs.getContext('2d');
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+
+      const series = results.map(({ ds, res }) => ({
+        ds, marks: res.marks,
+        pts: res.rows.map((r) => ({ x: clock ? r.t : r.x, y: r[key], r })).filter((p) => p.x != null && p.y != null && (!logY || p.y > 0)),
+      }));
+      const all = series.flatMap((s) => s.pts);
+      if (!all.length) {
+        g.fillStyle = '#64748b'; g.font = '14px sans-serif'; g.textAlign = 'center';
+        g.fillText('표시할 데이터가 없습니다 (예열 구간만 있거나 값이 범위를 벗어남)', W / 2, H / 2);
+        plot = null; return;
+      }
+      let xlo = Math.min(...all.map((p) => p.x)), xhi = Math.max(...all.map((p) => p.x));
+      if (xhi === xlo) xhi = xlo + (clock ? 60000 : 1);
+      let ylo = Math.min(...all.map((p) => p.y)), yhi = Math.max(...all.map((p) => p.y));
+      const showRef = key === 'ppm' && $('refLines').checked;
+      if (showRef && yhi > 15) yhi = Math.max(yhi, 37);
+      if (logY) { ylo = Math.pow(10, Math.floor(Math.log10(ylo))); yhi = Math.pow(10, Math.ceil(Math.log10(yhi))); if (yhi === ylo) yhi *= 10; }
+      else { const pad = (yhi - ylo) * 0.08 || Math.abs(yhi) * 0.1 || 1; ylo -= pad; yhi += pad; if (key !== 'v' && ylo < 0 && Math.min(...all.map((p) => p.y)) >= 0) ylo = 0; }
+
+      const L = 62, R = 16, T = 16, B = 44;
+      const X = (x) => L + (W - L - R) * (x - xlo) / (xhi - xlo);
+      const Y = logY
+        ? (y) => T + (H - T - B) * (1 - (Math.log10(y) - Math.log10(ylo)) / (Math.log10(yhi) - Math.log10(ylo)))
+        : (y) => T + (H - T - B) * (1 - (y - ylo) / (yhi - ylo));
+
+      // 격자·눈금
+      g.font = '11px ' + getComputedStyle(document.body).fontFamily;
+      g.lineWidth = 1;
+      const yt = logY ? (() => { const o = []; const span = Math.round(Math.log10(yhi / ylo)); for (let e = Math.round(Math.log10(ylo)); e <= Math.round(Math.log10(yhi)); e++) (span <= 2 ? [1, 2, 5] : [1]).forEach((m) => { const v = m * Math.pow(10, e); if (v >= ylo * 0.999 && v <= yhi * 1.001) o.push(v); }); return o; })() : niceTicks(ylo, yhi, 6);
+      g.textAlign = 'right'; g.textBaseline = 'middle';
+      yt.forEach((v) => {
+        g.strokeStyle = '#eef2f7'; g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(W - R, Y(v)); g.stroke();
+        g.fillStyle = '#64748b'; g.fillText(+v.toPrecision(4) + '', L - 8, Y(v));
+      });
+      let xt;
+      if (clock) {
+        const span = (xhi - xlo) / 60000;
+        const stepMin = [1, 2, 5, 10, 15, 30, 60, 120, 240, 480, 1440].find((s) => span / s <= 8) || 1440;
+        const st = stepMin * 60000, off = new Date(xlo).getTimezoneOffset() * 60000;
+        xt = []; for (let v = Math.ceil((xlo - off) / st) * st + off; v <= xhi; v += st) xt.push(v);
+      } else xt = niceTicks(xlo, xhi, 8);
+      g.textAlign = 'center'; g.textBaseline = 'top';
+      xt.forEach((v) => {
+        g.strokeStyle = '#eef2f7'; g.beginPath(); g.moveTo(X(v), T); g.lineTo(X(v), H - B); g.stroke();
+        g.fillStyle = '#64748b'; g.fillText(clock ? fmtClock(v) : +v.toPrecision(4) + '', X(v), H - B + 6);
+      });
+      g.strokeStyle = '#cbd5e1'; g.beginPath(); g.moveTo(L, T); g.lineTo(L, H - B); g.lineTo(W - R, H - B); g.stroke();
+      g.fillStyle = '#334155'; g.font = '600 12px ' + getComputedStyle(document.body).fontFamily;
+      g.fillText(clock ? '측정 시각' : '경과 시간 (분)', L + (W - L - R) / 2, H - 18);
+      g.save(); g.translate(14, T + (H - T - B) / 2); g.rotate(-Math.PI / 2); g.textBaseline = 'middle'; g.fillText(Y_LABEL[key], 0, 0); g.restore();
+
+      g.save(); g.beginPath(); g.rect(L, T, W - L - R, H - T - B); g.clip();
+      // 노출기준선
+      if (showRef) {
+        [[25, 'TWA 25 ppm', '#d97706'], [35, 'STEL 35 ppm', '#e11d48']].forEach(([v, t, c]) => {
+          if (v < ylo || v > yhi) return;
+          g.strokeStyle = c; g.setLineDash([6, 5]); g.lineWidth = 1.2;
+          g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(W - R, Y(v)); g.stroke(); g.setLineDash([]);
+          g.fillStyle = c; g.font = '600 11px sans-serif'; g.textAlign = 'right'; g.textBaseline = 'bottom'; g.fillText(t, W - R - 4, Y(v) - 2);
+        });
+      }
+      // 실험 표시
+      series.forEach((s) => s.marks.forEach((m) => {
+        const mx = clock ? m.t : m.x; if (mx == null) return;
+        g.strokeStyle = s.ds.color; g.globalAlpha = .45; g.setLineDash([3, 4]); g.lineWidth = 1;
+        g.beginPath(); g.moveTo(X(mx), T); g.lineTo(X(mx), H - B); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+        g.fillStyle = s.ds.color; g.font = '600 11px sans-serif'; g.textAlign = 'left'; g.textBaseline = 'top';
+        g.fillText('📍' + m.note, X(mx) + 3, T + 2);
+      }));
+      // 선
+      series.forEach((s) => {
+        g.strokeStyle = s.ds.color; g.lineWidth = 2; g.lineJoin = 'round'; g.beginPath();
+        let prev = null;
+        s.pts.forEach((p) => {
+          const gap = prev && (p.r.up - prev.r.up) > Math.max(60, 5 * (s.ds.dt || 5));
+          (prev && !gap) ? g.lineTo(X(p.x), Y(p.y)) : g.moveTo(X(p.x), Y(p.y));
+          prev = p;
+        });
+        g.stroke();
+      });
+      g.restore();
+      plot = { series, X, Y, L, R, T, B, W, H, key, clock };
+      $('legend').innerHTML = series.map((s) => `<span><i style="background:${s.ds.color}"></i>${esc(s.ds.label)}</span>`).join('');
+    }
+
+    function showTip(ev) {
+      const tip = $('tip');
+      if (!plot) { tip.classList.add('hidden'); return; }
+      const rect = cvs.getBoundingClientRect();
+      const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+      if (mx < plot.L || mx > plot.W - plot.R || my < plot.T || my > plot.H - plot.B) { tip.classList.add('hidden'); return; }
+      let best = null;
+      plot.series.forEach((s) => s.pts.forEach((p) => {
+        const d = Math.hypot(plot.X(p.x) - mx, (plot.Y(p.y) - my) * 0.6);
+        if (!best || d < best.d) best = { d, p, s };
+      }));
+      if (!best || best.d > 60) { tip.classList.add('hidden'); return; }
+      const r = best.p.r;
+      tip.innerHTML = `<b style="color:${best.s.ds.color}">●</b> ${esc(best.s.ds.label)}<br>` +
+        `${r.t ? new Date(r.t).toLocaleTimeString('ko-KR') + ' · ' : ''}${r.x.toFixed(2)}분<br>` +
+        `${Y_LABEL[plot.key]}: <b>${best.p.y.toFixed(Y_DIG[plot.key])}</b>` +
+        (plot.key !== 'ppm' && r.ppm != null ? `<br>≈ ${r.ppm.toFixed(1)} ppm` : '') +
+        (plot.key !== 'ratio' && r.ratio != null ? `<br>Rs/R0 ${r.ratio.toFixed(3)}` : '');
+      tip.style.left = plot.X(best.p.x) + 'px';
+      tip.style.top = plot.Y(best.p.y) + 'px';
+      tip.classList.remove('hidden');
+    }
+    cvs.addEventListener('pointermove', showTip);
+    cvs.addEventListener('pointerleave', () => $('tip').classList.add('hidden'));
+
+    // ── 통계 ──────────────────────────────────────────────
+    function stats(results) {
+      const key = $('yMode').value, dg = Y_DIG[key];
+      $('statUnit').textContent = Y_LABEL[key];
+      const f = (v) => (v == null || !isFinite(v) ? '—' : v.toFixed(dg));
+      const rowsHtml = results.map(({ ds, res }) => {
+        const pts = res.rows.filter((r) => r[key] != null);
+        const ys = pts.map((r) => r[key]);
+        if (!ys.length) return `<tr><td>${esc(ds.label)}</td><td colspan="8">데이터 없음</td></tr>`;
+        const n = ys.length, mean = ys.reduce((a, c) => a + c, 0) / n;
+        const sd = Math.sqrt(ys.reduce((a, c) => a + (c - mean) ** 2, 0) / Math.max(1, n - 1));
+        // 농도가 높을수록 ppm·전압은 증가, Rs·Rs/R0는 감소 → 반응 극값 방향을 구분
+        const up = key === 'ppm' || key === 'v';
+        let pk = 0; ys.forEach((v, i) => { if (up ? v > ys[pk] : v < ys[pk]) pk = i; });
+        const dur = pts[n - 1].x - pts[0].x;
+        const ppms = res.rows.map((r) => r.ppm).filter((v) => v != null);
+        const over = ppms.length ? (ppms.filter((v) => v >= 25).length / ppms.length * 100) : null;
+        return `<tr>
+          <td><span class="legend"><span><i style="background:${ds.color}"></i>${esc(ds.label)}</span></span></td>
+          <td class="num">${n}</td><td class="num">${dur.toFixed(1)}분</td>
+          <td class="num">${f(Math.min(...ys))}</td><td class="num">${f(Math.max(...ys))}</td>
+          <td class="num">${f(mean)} ± ${f(sd)}</td>
+          <td class="num">${f(ys[pk])} @ ${pts[pk].x.toFixed(1)}분</td>
+          <td class="num">${res.r0 ? res.r0.toFixed(2) + ' kΩ' : '—'}<br><small style="color:var(--muted)">${esc(res.r0Src)}</small></td>
+          <td class="num">${over == null ? '—' : over.toFixed(0) + '%'}</td></tr>`;
+      }).join('');
+      $('statTbl').innerHTML = `<thead><tr><th>데이터</th><th>측정 수</th><th>기간</th><th>최소</th><th>최대</th><th>평균 ± SD</th><th>최대 반응 (시점)</th><th>R0</th><th>25 ppm 이상 비율</th></tr></thead><tbody>${rowsHtml}</tbody>`;
+      const noCal = results.some(({ ds }) => ds.meta.calibrated === '0') && $('r0Mode').value === 'file';
+      $('statNote').innerHTML = (noCal ? '⚠️ 교정되지 않은 파일이 있습니다 (R0 기본값). ppm 절댓값은 의미가 약하므로 <b>R0 사용 방식 → 기준선 구간</b>을 선택하거나 Rs/R0로 비교하세요.<br>' : '') +
+        '최대 반응: ppm·전압은 최댓값, Rs·Rs/R0는 최솟값(농도가 높을수록 감소)을 기준으로 합니다.';
+    }
+
+    function marksTable(results) {
+      const all = results.flatMap(({ ds, res }) => res.marks.map((m) => {
+        const after = res.rows.filter((r) => r.x >= m.x && r.x <= m.x + 3 && r.ppm != null);
+        const before = res.rows.filter((r) => r.x < m.x && r.x >= m.x - 1 && r.ppm != null);
+        const avg = (a) => a.length ? a.reduce((s, r) => s + r.ppm, 0) / a.length : null;
+        const peak = after.length ? Math.max(...after.map((r) => r.ppm)) : null;
+        return { ds, m, b: avg(before), peak };
+      }));
+      $('markCard').classList.toggle('hidden', !all.length);
+      $('markTbl').innerHTML = `<thead><tr><th>데이터</th><th>시점</th><th>메모</th><th>직전 1분 평균</th><th>이후 3분 최대</th></tr></thead><tbody>` +
+        all.map(({ ds, m, b, peak }) => `<tr><td>${esc(ds.label)}</td>
+          <td class="num">${m.t ? new Date(m.t).toLocaleTimeString('ko-KR') + ' · ' : ''}${m.x.toFixed(1)}분</td>
+          <td>${esc(m.note)}</td><td class="num">${b == null ? '—' : b.toFixed(1) + ' ppm'}</td>
+          <td class="num">${peak == null ? '—' : peak.toFixed(1) + ' ppm'}</td></tr>`).join('') + '</tbody>';
+    }
+
+    // ── 렌더링 ────────────────────────────────────────────
+    let last = [];
+    function render() {
+      $('work').classList.toggle('hidden', !sets.length);
+      $('clearBtn').classList.toggle('hidden', !sets.length);
+      $('baseWrap').classList.toggle('hidden', $('r0Mode').value !== 'baseline');
+      $('manWrap').classList.toggle('hidden', $('r0Mode').value !== 'manual');
+      $('dsList').innerHTML = sets.map((ds, i) => {
+        const m = ds.meta, n = ds.rows.length;
+        const first = ds.rows.find((r) => r.t), lastR = [...ds.rows].reverse().find((r) => r.t);
+        return `<div class="ds">
+          <span class="sw" style="background:${ds.color}"></span>
+          <div class="grow"><div class="nm">${esc(ds.name)}</div>
+            <div class="meta">${n}행 · ${esc(m.model || '센서 정보 없음')}${m.r0_kohm ? ' · R0 ' + esc(m.r0_kohm) + ' kΩ' : ''}
+            ${m.calibrated === '1' ? ' <span class="pill">교정됨</span>' : m.calibrated === '0' ? ' <span class="pill warn">미교정</span>' : ''}
+            ${first ? ' · ' + esc(new Date(first.t).toLocaleString('ko-KR')) + (lastR && lastR !== first ? ' ~ ' + esc(new Date(lastR.t).toLocaleTimeString('ko-KR')) : '') : ''}</div></div>
+          <input type="text" data-lbl="${i}" value="${esc(ds.label)}" aria-label="그래프 이름" />
+          <button class="del-btn" data-rm="${i}" aria-label="삭제">✕</button></div>`;
+      }).join('');
+      if (!sets.length) return;
+      last = sets.map((ds) => ({ ds, res: compute(ds) }));
+      draw(last); stats(last); marksTable(last);
+    }
+
+    // ── 파일 입력 ─────────────────────────────────────────
+    function addText(text, name) {
+      try {
+        const ds = parseCsv(text, name);
+        ds.color = COLORS[sets.length % COLORS.length];
+        const ups = ds.rows.map((r) => r.up);
+        ds.dt = ups.length > 1 ? (ups[ups.length - 1] - ups[0]) / (ups.length - 1) : 5;
+        sets.push(ds);
+      } catch (e) { alert(`${name}: 읽을 수 없는 파일입니다 — ${e.message}`); }
+    }
+    function addFiles(files) {
+      const jobs = [...files].map((f) => f.text().then((t) => addText(t, f.name)));
+      Promise.all(jobs).then(render);
+    }
+    $('fileIn').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+    const drop = $('drop');
+    ['dragenter', 'dragover'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+    drop.addEventListener('drop', (e) => addFiles(e.dataTransfer.files));
+    $('dsList').addEventListener('click', (e) => {
+      const i = e.target.dataset.rm; if (i == null) return;
+      sets.splice(+i, 1); sets.forEach((d, k) => { d.color = COLORS[k % COLORS.length]; }); render();
+    });
+    $('dsList').addEventListener('change', (e) => {
+      const i = e.target.dataset.lbl; if (i == null) return;
+      sets[+i].label = e.target.value.trim() || sets[+i].name; render();
+    });
+    $('clearBtn').addEventListener('click', () => { sets = []; render(); });
+    ['yMode', 'xMode', 'r0Mode', 'baseMin', 'r0Man', 'curve', 'hideWarm', 'logY', 'refLines', 'smooth']
+      .forEach((id) => $(id).addEventListener('change', render));
+    let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => last.length && draw(last), 120); });
+
+    // ── 예시 데이터 (모의값: 측정기 출력 형식 확인용) ──────
+    $('sampleBtn').addEventListener('click', () => {
+      const vc = 5, rl = 6.667, r0 = 20, A = 39.54, B = -3.802;
+      let csv = `# device=Pico2W-NH3,model=MQ-137,vc=${vc},rl_kohm=10,rl_eff_kohm=${rl},div_ratio=0.5,r0_kohm=${r0},curve_a=${A},curve_b=${B},clean_air_ratio=3.6,calibrated=1,label=sample\n` +
+        'time,uptime_s,adc_v,sensor_v,rs_kohm,ratio,ppm,warmup,note\n';
+      const start = new Date(); start.setHours(10, 0, 0, 0);
+      let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647 - 0.5);
+      for (let s = 0; s <= 1500; s += 5) {
+        const warm = s < 180 ? 1 : 0;
+        let ratio = 3.6 + (warm ? (180 - s) / 60 : 0);
+        if (s >= 480) ratio = 3.6 - 2.4 * (1 - Math.exp(-(s - 480) / 70));          // 노출: 응답
+        if (s >= 960) ratio = (3.6 - 2.4 * (1 - Math.exp(-480 / 70))) + 2.3 * (1 - Math.exp(-(s - 960) / 160)); // 제거: 회복
+        ratio *= 1 + rnd() * 0.02;
+        const rs = ratio * r0, v = vc * rl / (rs + rl), ppm = A * Math.pow(ratio, B);
+        const d = new Date(start.getTime() + s * 1000), p = (n) => String(n).padStart(2, '0');
+        const note = s === 480 ? '암모니아수 뚜껑 엶' : s === 960 ? '뚜껑 닫고 환기' : '';
+        csv += `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())},${s},${(v * 0.5).toFixed(4)},${v.toFixed(4)},${rs.toFixed(3)},${ratio.toFixed(4)},${ppm.toFixed(2)},${warm},${note}\n`;
+      }
+      addText(csv, '예시_run_001.csv'); render();
+    });
+
+    // ── 내보내기 ──────────────────────────────────────────
+    function download(blob, name) {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+    $('pngBtn').addEventListener('click', () => cvs.toBlob((b) => download(b, 'NH3_그래프.png')));
+    $('csvBtn').addEventListener('click', () => {
+      let out = '﻿데이터,측정 시각,경과(분),센서전압(V),Rs(kΩ),R0(kΩ),Rs/R0,NH3 추정(ppm),메모\n';
+      last.forEach(({ ds, res }) => res.rows.forEach((r) => {
+        const q = (s) => `"${String(s).replace(/"/g, '""')}"`;
+        out += [q(ds.label), r.t ? q(new Date(r.t).toLocaleString('ko-KR')) : '', r.x.toFixed(3),
+          r.v ?? '', r.rs != null ? r.rs.toFixed(3) : '', res.r0 != null ? res.r0.toFixed(3) : '',
+          r.ratio != null ? r.ratio.toFixed(4) : '', r.ppm != null ? r.ppm.toFixed(2) : '', q(r.note)].join(',') + '\n';
+      }));
+      download(new Blob([out], { type: 'text/csv;charset=utf-8' }), 'NH3_분석결과.csv');
+    });
+
+    render();
+  })();
+  </script>
+</body>
+</html>
