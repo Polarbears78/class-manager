@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>암모니아 측정기 사용법</title>
+<style>
+:root{--ink:#0f172a;--muted:#475569;--accent:#4f46e5;--soft:#eef2ff;--warn:#b45309;--warnbg:#fff7ed;--danger:#be123c;--dangerbg:#fff1f2;--ok:#047857;--okbg:#ecfdf5;--line:#e2e8f0}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1080px;background:#f8fafc;color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR","WenQuanYi Zen Hei",sans-serif;line-height:1.45}
+.wrap{padding:56px 56px 44px}
+header{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-radius:28px;padding:40px 44px;position:relative;overflow:hidden}
+header .tag{display:inline-block;background:rgba(255,255,255,.2);border-radius:999px;padding:6px 16px;font-size:22px;font-weight:700;letter-spacing:.02em}
+header h1{font-size:58px;font-weight:900;letter-spacing:-.02em;margin:14px 0 8px}
+header h1 small{font-size:34px;font-weight:700;opacity:.85}
+header p{font-size:25px;opacity:.92}
+header .mol{position:absolute;right:40px;top:34px;width:190px;height:190px;opacity:.95}
+.steps{margin-top:30px;display:flex;flex-direction:column;gap:18px}
+.step{display:flex;gap:24px;background:#fff;border:2px solid var(--line);border-radius:24px;padding:24px 28px;align-items:center}
+.num{flex:0 0 76px;height:76px;border-radius:22px;background:var(--accent);color:#fff;font-size:40px;font-weight:900;display:flex;align-items:center;justify-content:center}
+.body{flex:1}
+.body h2{font-size:32px;font-weight:800;letter-spacing:-.01em;margin-bottom:6px}
+.body p{font-size:23px;color:var(--muted)}
+.body b{color:var(--ink)}
+.chip{display:inline-block;background:var(--soft);color:var(--accent);font-weight:800;border-radius:10px;padding:2px 12px;font-size:23px;font-family:ui-monospace,Menlo,Consolas,monospace}
+.btn{display:inline-block;background:var(--accent);color:#fff;font-weight:800;border-radius:10px;padding:2px 12px;font-size:22px}
+.btn.ghost{background:var(--soft);color:var(--accent)}
+.ico{flex:0 0 150px;font-size:64px;text-align:center;white-space:nowrap}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
+.box{border-radius:24px;padding:26px 28px}
+.box h3{font-size:28px;font-weight:900;margin-bottom:12px}
+.box li{font-size:22px;margin:0 0 8px 28px}
+.safe{background:var(--dangerbg);border:2px solid #fecdd3}
+.safe h3{color:var(--danger)}
+.read{background:var(--okbg);border:2px solid #a7f3d0}
+.read h3{color:var(--ok)}
+.graph{background:#fff;border-radius:14px;margin:6px 0 12px;padding:10px 12px}
+.dont{margin-top:18px;background:var(--warnbg);border:2px solid #fed7aa;border-radius:24px;padding:22px 28px;font-size:23px;color:#7c2d12;display:flex;gap:18px;align-items:center}
+.dont b{color:var(--warn)}
+footer{margin-top:22px;text-align:center;color:#94a3b8;font-size:19px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="tag">과학 실험 · 모둠 활동</span>
+    <h1>암모니아 측정기 <small>사용법</small></h1>
+    <p>Pico 측정기 + 휴대폰으로 NH₃ 농도 변화를 기록해요</p>
+    <svg class="mol" viewBox="0 0 200 200" aria-hidden="true">
+      <g stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".8">
+        <line x1="100" y1="92" x2="100" y2="34"/><line x1="100" y1="92" x2="44" y2="140"/><line x1="100" y1="92" x2="156" y2="140"/>
+      </g>
+      <circle cx="100" cy="92" r="40" fill="#fff"/><text x="100" y="106" text-anchor="middle" font-size="40" font-weight="900" fill="#4f46e5" font-family="sans-serif">N</text>
+      <g fill="#c7d2fe"><circle cx="100" cy="30" r="24"/><circle cx="40" cy="144" r="24"/><circle cx="160" cy="144" r="24"/></g>
+      <g font-size="24" font-weight="800" fill="#4338ca" text-anchor="middle" font-family="sans-serif"><text x="100" y="39">H</text><text x="40" y="153">H</text><text x="160" y="153">H</text></g>
+    </svg>
+  </header>
+
+  <div class="steps">
+    <div class="step">
+      <div class="num">1</div>
+      <div class="body">
+        <h2>전원 켜고 3분 기다리기</h2>
+        <p>USB를 꽂으면 자동으로 켜져요. 센서가 데워지도록 <b>3분 이상</b> 기다려요.<br>화면에 <b>"예열 중"</b>이 사라지면 준비 완료!</p>
+      </div>
+      <div class="ico">🔌⏳</div>
+    </div>
+
+    <div class="step">
+      <div class="num">2</div>
+      <div class="body">
+        <h2>휴대폰 Wi-Fi 연결</h2>
+        <p>Wi-Fi <span class="chip">NH3-Pico</span> 비밀번호 <span class="chip">nh3pico1234</span><br>
+        "인터넷 없음" 창이 뜨면 <b>연결 유지</b> → 브라우저 주소창에 <span class="chip">http://192.168.4.1</span></p>
+      </div>
+      <div class="ico">📶📱</div>
+    </div>
+
+    <div class="step">
+      <div class="num">3</div>
+      <div class="body">
+        <h2>우리 모둠 기록 시작</h2>
+        <p>기록 이름에 <b>영문·숫자</b>로 모둠 이름 입력 (예: <span class="chip">group1</span>)<br>
+        → <span class="btn ghost">＋ 새 기록 시작</span> 누르기</p>
+      </div>
+      <div class="ico">📝</div>
+    </div>
+
+    <div class="step">
+      <div class="num">4</div>
+      <div class="body">
+        <h2>실험하면서 📍표시 남기기</h2>
+        <p>무언가 바꿀 때마다 메모를 쓰고 <span class="btn">📍 표시</span><br>
+        예: "뚜껑 엶", "10 cm로 가까이", "뚜껑 닫고 환기"</p>
+      </div>
+      <div class="ico">🧪</div>
+    </div>
+
+    <div class="step">
+      <div class="num">5</div>
+      <div class="body">
+        <h2>파일 받고 그래프 보기</h2>
+        <p>실험이 끝나면 우리 모둠 파일 <span class="btn ghost">⬇ 받기</span> → CSV 파일 저장<br>
+        <b>분석 페이지</b>에 파일 올리기 → 그래프 완성!</p>
+      </div>
+      <div class="ico">📈</div>
+    </div>
+  </div>
+
+  <div class="row2">
+    <div class="box safe">
+      <h3>⚠️ 안전 수칙</h3>
+      <ul>
+        <li>센서 금속망은 <b>뜨거워요</b> — 만지지 않기</li>
+        <li>암모니아 냄새는 <b>손으로 부채질</b>해서만</li>
+        <li>센서에 <b>용액이 닿지 않게</b></li>
+        <li>실험 중에는 <b>창문 열고 환기</b></li>
+        <li>암모니아수 병은 <b>선생님 안내</b>대로만</li>
+        <li>어지럽거나 눈이 따가우면 <b>바로 알리기</b></li>
+      </ul>
+    </div>
+    <div class="box read">
+      <h3>🔍 그래프 읽는 법</h3>
+      <svg class="graph" viewBox="0 0 400 120" width="100%" aria-hidden="true">
+        <line x1="20" y1="100" x2="390" y2="100" stroke="#cbd5e1" stroke-width="2"/>
+        <line x1="120" y1="10" x2="120" y2="100" stroke="#a5b4fc" stroke-dasharray="5 5" stroke-width="2"/>
+        <line x1="270" y1="10" x2="270" y2="100" stroke="#a5b4fc" stroke-dasharray="5 5" stroke-width="2"/>
+        <path d="M20 92 L120 92 C160 90 170 30 230 24 L270 22 C290 40 300 85 390 90" fill="none" stroke="#4f46e5" stroke-width="5" stroke-linecap="round"/>
+        <text x="124" y="22" font-size="16" fill="#4f46e5" font-weight="700">📍뚜껑 엶</text>
+        <text x="274" y="22" font-size="16" fill="#4f46e5" font-weight="700">📍닫음</text>
+      </svg>
+      <ul>
+        <li><b>ppm ↑</b> = 암모니아가 많아짐</li>
+        <li><b>Rs/R0 ↓</b> = 암모니아가 많아짐</li>
+        <li>숫자보다 <b>변화 모양</b>을 비교해요</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="dont">
+    <div style="font-size:48px">🙅</div>
+    <div><b>하지 말아요:</b> 설정·교정 버튼 누르기 (선생님만) · 다른 모둠 파일 삭제 · 손 소독제 바른 손으로 센서 근처 가기 (알코올에도 반응해요!)</div>
+  </div>
+
+  <footer>궁금한 점은 선생님께 · 측정값(ppm)은 추정값이에요</footer>
+</div>
+</body>
+</html>
