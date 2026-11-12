@@ -24,6 +24,9 @@ header .mol{position:absolute;right:40px;top:34px;width:190px;height:190px;opaci
 .chip{display:inline-block;background:var(--soft);color:var(--accent);font-weight:800;border-radius:10px;padding:2px 12px;font-size:23px;font-family:ui-monospace,Menlo,Consolas,monospace}
 .btn{display:inline-block;background:var(--accent);color:#fff;font-weight:800;border-radius:10px;padding:2px 12px;font-size:22px}
 .btn.ghost{background:var(--soft);color:var(--accent)}
+.cal{border-color:#a5b4fc;background:#f5f7ff}
+.who{display:inline-block;font-size:20px;font-weight:700;color:var(--accent);background:#fff;border:2px solid #c7d2fe;border-radius:999px;padding:2px 12px;vertical-align:middle;margin-left:6px}
+.tip{margin-top:8px;font-size:20px !important;color:var(--danger) !important;font-weight:600}
 .ico{flex:0 0 150px;font-size:64px;text-align:center;white-space:nowrap}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
 .box{border-radius:24px;padding:26px 28px}
@@ -75,8 +78,20 @@ footer{margin-top:22px;text-align:center;color:#94a3b8;font-size:19px}
       <div class="ico">📶📱</div>
     </div>
 
-    <div class="step">
+    <div class="step cal">
       <div class="num">3</div>
+      <div class="body">
+        <h2>청정공기 교정 <span class="who">실험 전 1번 · 모둠 대표</span></h2>
+        <p>① 창문을 열고 <b>암모니아수 병은 닫아서 멀리</b> 두기<br>
+        ② 화면 아래 설정에서 <span class="btn ghost">🌬️ 청정공기 교정</span> → 확인<br>
+        ③ "교정 완료"가 뜨면 끝! → 농도 <b>0~1 ppm</b> (Rs/R0 <b>≈3.6</b>)</p>
+        <p class="tip">교정 중엔 ✕ 입김 불기 ✕ 손 소독제 ✕ 파란 나사 돌리기</p>
+      </div>
+      <div class="ico">🌬️🪟</div>
+    </div>
+
+    <div class="step">
+      <div class="num">4</div>
       <div class="body">
         <h2>우리 모둠 기록 시작</h2>
         <p>기록 이름에 <b>영문·숫자</b>로 모둠 이름 입력 (예: <span class="chip">group1</span>)<br>
@@ -86,7 +101,7 @@ footer{margin-top:22px;text-align:center;color:#94a3b8;font-size:19px}
     </div>
 
     <div class="step">
-      <div class="num">4</div>
+      <div class="num">5</div>
       <div class="body">
         <h2>실험하면서 📍표시 남기기</h2>
         <p>무언가 바꿀 때마다 메모를 쓰고 <span class="btn">📍 표시</span><br>
@@ -96,7 +111,7 @@ footer{margin-top:22px;text-align:center;color:#94a3b8;font-size:19px}
     </div>
 
     <div class="step">
-      <div class="num">5</div>
+      <div class="num">6</div>
       <div class="body">
         <h2>파일 받고 그래프 보기</h2>
         <p>실험이 끝나면 우리 모둠 파일 <span class="btn ghost">⬇ 받기</span> → CSV 파일 저장<br>
@@ -138,7 +153,7 @@ footer{margin-top:22px;text-align:center;color:#94a3b8;font-size:19px}
 
   <div class="dont">
     <div style="font-size:48px">🙅</div>
-    <div><b>하지 말아요:</b> 설정·교정 버튼 누르기 (선생님만) · 다른 모둠 파일 삭제 · 손 소독제 바른 손으로 센서 근처 가기 (알코올에도 반응해요!)</div>
+    <div><b>하지 말아요:</b> 실험 도중 교정·설정 바꾸기 · 다른 모둠 파일 삭제 · 손 소독제 바른 손으로 센서 근처 가기 (알코올에도 반응해요!)</div>
   </div>
 
   <footer>궁금한 점은 선생님께 · 측정값(ppm)은 추정값이에요</footer>
