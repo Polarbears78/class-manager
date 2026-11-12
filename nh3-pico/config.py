@@ -11,7 +11,7 @@ WIFI_PASSWORD = ""
 
 # Pico가 직접 만드는 Wi-Fi (AP 모드) — 접속 주소: http://192.168.4.1
 AP_SSID = "NH3-Pico"
-AP_PASSWORD = "nh3pico1234"   # 8자 이상
+AP_PASSWORD = "pico1234"   # 8자 이상
 
 # ── 배선 ────────────────────────────────────────────────────
 ADC_PIN = 26          # 센서 OUT(AO) → (분압) → GP26 (ADC0, 핀 31)
