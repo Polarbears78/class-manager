@@ -129,6 +129,7 @@
           <label class="check-label"><input type="checkbox" id="logY" /> 세로축 로그 눈금</label>
           <label class="check-label"><input type="checkbox" id="refLines" checked /> 노출기준선 (25·35 ppm)</label>
           <label class="check-label"><input type="checkbox" id="smooth" /> 이동평균 (5점)</label>
+          <label class="check-label"><input type="checkbox" id="clampPpm" checked /> ppm을 측정 범위(5~500)로 자르기</label>
         </div>
       </section>
 
@@ -320,7 +321,7 @@
 
       const series = results.map(({ ds, res }) => ({
         ds, marks: res.marks,
-        pts: res.rows.map((r) => ({ x: clock ? r.t : r.x, y: r[key], r })).filter((p) => p.x != null && p.y != null && (!logY || p.y > 0)),
+        pts: res.rows.map((r) => ({ x: clock ? r.t : r.x, y: (key === 'ppm' && $('clampPpm').checked && r.ppm != null) ? Math.min(Math.max(r.ppm, 0), 500) : r[key], r })).filter((p) => p.x != null && p.y != null && (!logY || p.y > 0)),
       }));
       const all = series.flatMap((s) => s.pts);
       if (!all.length) {
@@ -455,7 +456,10 @@
       }).join('');
       $('statTbl').innerHTML = `<thead><tr><th>데이터</th><th>측정 수</th><th>기간</th><th>최소</th><th>최대</th><th>평균 ± SD</th><th>최대 반응 (시점)</th><th>R0</th><th>25 ppm 이상 비율</th></tr></thead><tbody>${rowsHtml}</tbody>`;
       const noCal = results.some(({ ds }) => ds.meta.calibrated === '0') && $('r0Mode').value === 'file';
-      $('statNote').innerHTML = (noCal ? '⚠️ 교정되지 않은 파일이 있습니다 (R0 기본값). ppm 절댓값은 의미가 약하므로 <b>R0 사용 방식 → 기준선 구간</b>을 선택하거나 Rs/R0로 비교하세요.<br>' : '') +
+      const allP = results.flatMap(({ res }) => res.rows.map((r) => r.ppm).filter((v) => v != null));
+      const hi = allP.filter((v) => v > 500).length, lo = allP.filter((v) => v < 5).length;
+      const rangeNote = allP.length && (hi || lo) ? `ℹ️ MQ-137 측정 범위(5~500 ppm) 밖: 500 초과 ${hi}점, 5 미만 ${lo}점. 범위 밖 ppm은 감도 곡선을 연장한 값이라 정량적 의미가 없습니다.<br>` : '';
+      $('statNote').innerHTML = rangeNote + (noCal ? '⚠️ 교정되지 않은 파일이 있습니다 (R0 기본값). ppm 절댓값은 의미가 약하므로 <b>R0 사용 방식 → 기준선 구간</b>을 선택하거나 Rs/R0로 비교하세요.<br>' : '') +
         '최대 반응: ppm·전압은 최댓값, Rs·Rs/R0는 최솟값(농도가 높을수록 감소)을 기준으로 합니다.';
     }
 
@@ -527,7 +531,7 @@
       sets[+i].label = e.target.value.trim() || sets[+i].name; render();
     });
     $('clearBtn').addEventListener('click', () => { sets = []; render(); });
-    ['yMode', 'xMode', 'r0Mode', 'baseMin', 'r0Man', 'curve', 'hideWarm', 'logY', 'refLines', 'smooth']
+    ['yMode', 'xMode', 'r0Mode', 'baseMin', 'r0Man', 'curve', 'hideWarm', 'logY', 'refLines', 'smooth', 'clampPpm']
       .forEach((id) => $(id).addEventListener('change', render));
     let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => last.length && draw(last), 120); });
 

@@ -114,7 +114,8 @@ async function refresh() {
     const s = await api('/api/status');
     if (!s.time_synced) await syncTime();   // AP 모드: 접속한 기기의 시각으로 자동 설정
     const L = s.last || {};
-    $('ppm').textContent = f(L.ppm, 1);
+    // 데이터시트 측정 범위 5~500 ppm 밖은 숫자 대신 범위로 표시 (CSV에는 계산값 그대로 기록)
+    $('ppm').textContent = L.ppm == null ? '—' : L.ppm > 500 ? '500 초과' : L.ppm < 5 ? '5 미만' : f(L.ppm, 1);
     $('ratio').textContent = f(L.ratio, 3);
     $('sv').textContent = L.sensor_v == null ? '—' : f(L.sensor_v, 3) + ' V';
     $('rs').textContent = L.rs == null ? '—' : f(L.rs, 2) + ' kΩ';
@@ -146,7 +147,7 @@ function draw(pts) {
   const g = cv.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, W, H);
   const v = pts.filter((p) => p[1] != null);
   if (v.length < 2) { $('cvInfo').textContent = '데이터 수집 중…'; return; }
-  const ys = v.map((p) => p[1]);
+  const ys = v.map((p) => Math.min(p[1], 500));   // 그래프는 측정 범위 상한에서 자름
   let lo = Math.min(...ys), hi = Math.max(...ys);
   lo = Math.max(0, lo); if (hi - lo < 1) { hi = lo + 1; }
   const x0 = v[0][0], x1 = v[v.length - 1][0];
@@ -155,9 +156,9 @@ function draw(pts) {
   g.strokeStyle = '#e2e8f0'; g.fillStyle = '#64748b'; g.font = '11px sans-serif';
   [lo, (lo + hi) / 2, hi].forEach((y) => { g.beginPath(); g.moveTo(36, Y(y)); g.lineTo(W - 8, Y(y)); g.stroke(); g.fillText(y.toFixed(1), 0, Y(y) + 4); });
   g.strokeStyle = '#4f46e5'; g.lineWidth = 2; g.beginPath();
-  v.forEach((p, i) => (i ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1]))));
+  v.forEach((p, i) => (i ? g.lineTo(X(p[0]), Y(Math.min(p[1], 500))) : g.moveTo(X(p[0]), Y(Math.min(p[1], 500)))));
   g.stroke();
-  $('cvInfo').textContent = `최근 ${Math.round((x1 - x0) / 60)}분 · 최저 ${Math.min(...ys).toFixed(1)} · 최고 ${Math.max(...ys).toFixed(1)} ppm`;
+  $('cvInfo').textContent = `최근 ${Math.round((x1 - x0) / 60)}분 · 최저 ${Math.min(...ys).toFixed(1)} · 최고 ${Math.max(...ys) >= 500 ? '500 초과' : Math.max(...ys).toFixed(1)} ppm`;
 }
 
 async function loadFiles() {
