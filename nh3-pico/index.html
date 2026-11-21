@@ -46,6 +46,7 @@ td.r{text-align:right;white-space:nowrap}
     <div class="kv"><small>Pico 시각</small><span id="clock">—</span></div>
   </div>
   <div class="warn" id="warmup" hidden></div>
+  <div class="warn" id="hiV" hidden style="background:#fff1f2;color:#be123c;font-weight:700">⚠️ Pico 입력 전압이 높습니다 (<span id="hiVv"></span> V). 암모니아 병을 즉시 치우세요 — 3.3 V를 넘으면 Pico가 손상될 수 있습니다.</div>
   <div class="warn" id="full" hidden>플래시 공간이 부족해 기록을 멈췄습니다. 파일을 내려받은 뒤 삭제하세요.</div>
 </section>
 
@@ -124,6 +125,8 @@ async function refresh() {
     $('warmup').hidden = left <= 0;
     $('warmup').textContent = `예열 중 — ${Math.ceil(left / 60)}분 남음. 이 구간 데이터는 warmup=1로 표시됩니다.`;
     $('full').hidden = !s.full;
+    $('hiV').hidden = !(L.adc_v > 2.8);
+    $('hiVv').textContent = f(L.adc_v, 2);
     $('curFile').textContent = s.file || '—';
     $('ivNow').textContent = s.interval;
     $('logState').textContent = s.logging ? '● 기록 중' : '⏸ 일시정지';
