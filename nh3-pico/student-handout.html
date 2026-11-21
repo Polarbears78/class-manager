@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>묽은 암모니아수 탐구 안내</title>
+<style>
+@page { size: A4; margin: 11mm 13mm 10mm 13mm; }
+:root{--ink:#0f172a;--muted:#475569;--accent:#4f46e5;--soft:#eef2ff;--line:#cbd5e1;--danger:#be123c;--dangerbg:#fff1f2;--ok:#047857;--okbg:#ecfdf5;--warnbg:#fffbeb;--warn:#92400e}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR","WenQuanYi Zen Hei",sans-serif;color:var(--ink);font-size:9.9pt;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid var(--accent);padding-bottom:8px;margin-bottom:12px}
+.head h1{font-size:16pt;letter-spacing:-.02em;line-height:1.25}
+.head h1 small{display:block;font-size:10.5pt;color:var(--accent);font-weight:700;letter-spacing:0}
+.name{font-size:10pt;color:var(--muted);white-space:nowrap}
+.name span{display:inline-block;border-bottom:1px solid var(--ink);width:110px;margin-left:4px}
+h2{font-size:11.5pt;margin:10px 0 4px;display:flex;align-items:center;gap:8px}
+h2 .n{display:inline-flex;width:22px;height:22px;border-radius:6px;background:var(--accent);color:#fff;font-size:10.5pt;align-items:center;justify-content:center}
+p{margin:4px 0}
+.box{border-radius:10px;padding:7px 12px;margin:6px 0}
+.key{background:var(--soft);border-left:5px solid var(--accent)}
+.safe{background:var(--dangerbg);border-left:5px solid var(--danger)}
+.note{background:var(--warnbg);border-left:5px solid #f59e0b;color:var(--warn);font-size:9.6pt}
+table{width:100%;border-collapse:collapse;margin:6px 0;font-size:9.8pt}
+th,td{border:1px solid var(--line);padding:4px 6px;text-align:center}
+th{background:#f1f5f9;font-weight:700}
+td.l{text-align:left}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+svg{display:block;width:100%;height:auto}
+.cap{text-align:center;font-size:9pt;color:var(--muted);margin-top:2px}
+ol,ul{padding-left:20px}
+li{margin:2px 0}
+.rec td{height:24px}
+.q li{margin-bottom:28px}
+.page-break{break-before:page}
+.foot{margin-top:10px;font-size:8.6pt;color:#94a3b8;text-align:center}
+b.hl{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="head">
+  <h1><small>암모니아 측정기 탐구 활동</small>묽은 암모니아수는 왜 값이 낮게 나올까?</h1>
+  <div class="name">학번 <span></span>&nbsp; 이름 <span></span></div>
+</div>
+
+<div class="box key">
+  <b>핵심 정리</b> — 측정기는 <b class="hl">용액</b>이 아니라 <b class="hl">센서 주변 공기 속</b> 암모니아(NH₃) 기체를 감지합니다.
+  묽은 용액은 공기 중으로 나오는 암모니아가 적고, 열린 공간에서는 금방 흩어져 묽어지기 때문에 측정값이 매우 낮게 나올 수 있습니다.
+</div>
+
+<h2><span class="n">1</span>ppm이란?</h2>
+<p><b>ppm</b>(parts per million)은 <b>공기 분자 100만 개 중 암모니아 분자가 몇 개인지</b>를 나타내는 단위입니다.
+예를 들어 25 ppm은 공기 분자 100만 개 중 암모니아 분자가 25개라는 뜻입니다.
+사람은 대략 5 ppm 안팎부터 암모니아 냄새를 느끼기 시작하며(사람마다 차이가 큼), 우리 측정기(MQ-137 센서)가 믿을 만하게 잴 수 있는 범위는 <b>5~500 ppm</b>입니다.</p>
+
+<h2><span class="n">2</span>용액 속 암모니아가 공기로 나오는 원리</h2>
+<div class="two">
+  <div>
+    <p>암모니아수는 암모니아 기체가 물에 녹아 있는 용액입니다. 용액 표면의 암모니아 분자 중 일부는 계속 <b>공기 중으로 빠져나옵니다</b>.</p>
+    <ul>
+      <li>용액이 <b>진할수록</b> 빠져나오는 암모니아가 <b>많습니다</b>.<br><span style="color:var(--muted);font-size:9.4pt">(용액 농도가 10배 → 공기 중 농도도 약 10배)</span></li>
+      <li>용액의 <b>온도가 높을수록</b> 더 많이 빠져나옵니다.</li>
+      <li>빠져나온 기체는 <b>확산</b>하여 넓은 공간으로 퍼지면서 묽어집니다.</li>
+    </ul>
+    <p style="font-size:9.2pt;color:var(--muted)">※ 기체가 액체에 녹는 양과 기체의 압력 사이의 관계는 고등학교 화학에서 '헨리 법칙'으로 배웁니다.</p>
+  </div>
+  <div>
+    <svg viewBox="0 0 320 190" aria-label="열린 공간과 닫힌 용기 비교">
+      <!-- open -->
+      <text x="78" y="16" font-size="12" font-weight="700" text-anchor="middle" fill="#0f172a">열린 공간</text>
+      <rect x="48" y="130" width="60" height="40" rx="4" fill="#dbeafe" stroke="#64748b"/>
+      <rect x="48" y="146" width="60" height="24" fill="#93c5fd"/>
+      <g fill="#4f46e5">
+        <circle cx="70" cy="118" r="3"/><circle cx="88" cy="108" r="3"/><circle cx="60" cy="96" r="3"/>
+        <circle cx="100" cy="86" r="3"/><circle cx="40" cy="70" r="3"/><circle cx="118" cy="56" r="3"/>
+        <circle cx="22" cy="40" r="3"/><circle cx="140" cy="32" r="3"/>
+      </g>
+      <g stroke="#a5b4fc" stroke-width="1.5" fill="none" marker-end="url(#ar)">
+        <path d="M78 126 L40 50"/><path d="M78 126 L78 40"/><path d="M78 126 L130 46"/>
+      </g>
+      <circle cx="78" cy="58" r="9" fill="#e2e8f0" stroke="#475569"/><text x="78" y="62" font-size="9" text-anchor="middle" fill="#0f172a">센서</text>
+      <text x="78" y="186" font-size="10.5" text-anchor="middle" fill="#be123c">흩어져서 센서 근처는 묽음</text>
+      <!-- closed -->
+      <text x="240" y="16" font-size="12" font-weight="700" text-anchor="middle" fill="#0f172a">닫힌 용기</text>
+      <rect x="180" y="28" width="120" height="142" rx="8" fill="#f8fafc" stroke="#475569" stroke-width="2"/>
+      <rect x="215" y="140" width="50" height="22" rx="3" fill="#dbeafe" stroke="#64748b"/>
+      <rect x="215" y="150" width="50" height="12" fill="#93c5fd"/>
+      <g fill="#4f46e5">
+        <circle cx="200" cy="60" r="3"/><circle cx="230" cy="48" r="3"/><circle cx="280" cy="62" r="3"/>
+        <circle cx="196" cy="100" r="3"/><circle cx="286" cy="96" r="3"/><circle cx="252" cy="118" r="3"/>
+        <circle cx="210" cy="128" r="3"/><circle cx="276" cy="130" r="3"/><circle cx="236" cy="96" r="3"/>
+        <circle cx="262" cy="78" r="3"/><circle cx="218" cy="80" r="3"/>
+      </g>
+      <circle cx="240" cy="58" r="9" fill="#e2e8f0" stroke="#475569"/><text x="240" y="62" font-size="9" text-anchor="middle" fill="#0f172a">센서</text>
+      <text x="240" y="186" font-size="10.5" text-anchor="middle" fill="#047857">갇혀서 일정한 농도에 도달</text>
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#a5b4fc"/></marker></defs>
+    </svg>
+    <p class="cap">● = 암모니아 분자</p>
+  </div>
+</div>
+
+<h2><span class="n">3</span>용액 농도와 공기 중 농도 (대략적인 추정값)</h2>
+<table>
+  <tr><th>용액</th><th>몰농도</th><th>닫힌 용기 안 공기<br>(충분히 기다렸을 때)</th><th>열린 공간 10~20 cm 거리</th><th>측정기로 보이는 값</th></tr>
+  <tr><td>진한 암모니아수 (원액)</td><td>약 14 M</td><td>매우 높음</td><td>수백 ppm 이상 가능</td><td>"500 초과"</td></tr>
+  <tr><td>묽은 용액 A</td><td>1 M</td><td>약 17,000 ppm</td><td>수십~수백 ppm</td><td>잘 보임</td></tr>
+  <tr><td>묽은 용액 B</td><td>0.1 M</td><td>약 1,700 ppm</td><td><b>수 ppm 이하</b>일 수 있음</td><td>"5 미만"일 수 있음</td></tr>
+  <tr><td>아주 묽은 용액 C</td><td>0.01 M</td><td>약 170 ppm</td><td>거의 검출 안 됨</td><td>"5 미만"</td></tr>
+</table>
+<div class="box note">열린 공간의 값은 바람, 손 위치, 용액 표면적, 온도에 따라 수십~수천 배까지 달라지는 <b>대략적인 범위</b>입니다.
+같은 용액이라도 <b>어떻게 측정하느냐</b>에 따라 결과가 크게 달라진다는 점을 기억하세요.</div>
+
+<h2><span class="n">4</span>안전 수칙 <span style="font-size:10pt;color:var(--danger)">— 실험 전에 반드시 읽기</span></h2>
+<div class="box safe">
+  <ul>
+    <li>암모니아수는 <b>선생님이 준비한 용액만</b> 사용합니다. 원액 병은 만지지 않습니다.</li>
+    <li>냄새는 직접 맡지 말고 <b>손으로 부채질</b>해서 확인합니다. 눈이 따갑거나 어지러우면 <b>즉시 선생님께</b> 알립니다.</li>
+    <li>센서 금속망은 <b>뜨겁습니다</b>. 만지지 않습니다. 센서에 용액이 닿지 않게 합니다.</li>
+    <li>측정기 화면에 <b style="color:var(--danger)">빨간 "입력 전압이 높습니다" 경고</b>가 뜨면 즉시 뚜껑을 열고 선생님께 알립니다.</li>
+    <li>실험 중에는 창문을 열어 환기합니다. 용액이 피부에 묻으면 흐르는 물로 씻습니다.</li>
+  </ul>
+</div>
+
+<div class="page-break"></div>
+
+<div class="head">
+  <h1><small>탐구 활동 · 닫힌 용기 실험</small>용액 농도에 따라 측정값은 어떻게 달라질까?</h1>
+</div>
+
+<h2><span class="n">5</span>실험 설계</h2>
+<table>
+  <tr><th style="width:22%">변인</th><th class="l">내용</th></tr>
+  <tr><td>바꾸는 것<br>(조작 변인)</td><td class="l">암모니아수의 농도 (C: 0.01 M → B: 0.1 M 순서로 <b>묽은 것부터</b>)</td></tr>
+  <tr><td>측정하는 것<br>(종속 변인)</td><td class="l">측정기의 NH₃ 값(ppm), Rs/R0, 값이 안정될 때까지 걸린 시간</td></tr>
+  <tr><td>같게 하는 것<br>(통제 변인)</td><td class="l">용액의 양(1 mL), 용기 크기, 센서 위치, 측정 시간(5분), 실내 온도, 시계접시 크기</td></tr>
+</table>
+
+<h2><span class="n">6</span>실험 과정</h2>
+<ol>
+  <li>측정기를 켜고 <b>3분 이상</b> 예열합니다. 측정 화면에서 <b>＋ 새 기록 시작</b>을 누릅니다 (기록 이름 예: <b>group1</b>).</li>
+  <li>센서를 빈 용기에 넣고 뚜껑을 닫은 뒤 <b>2분</b> 동안 기다립니다. → 📍표시 <b>"기준선"</b></li>
+  <li>시계접시에 용액 C를 1 mL 담아 용기에 넣고 빠르게 뚜껑을 닫습니다. → 📍표시 <b>"C 넣음"</b></li>
+  <li><b>5분</b> 동안 값의 변화를 관찰하며 아래 표에 기록합니다.</li>
+  <li>뚜껑을 열고 시계접시를 꺼낸 뒤 환기합니다. → 📍표시 <b>"C 꺼냄"</b>. 값이 처음 수준으로 돌아올 때까지 기다립니다.</li>
+  <li>용액 B로 3~5번을 반복합니다.</li>
+  <li>실험이 끝나면 파일을 받아 <b>분석 페이지</b>에 올려 그래프를 확인합니다.</li>
+</ol>
+
+<h2><span class="n">7</span>기록표</h2>
+<table class="rec">
+  <tr><th>용액</th><th>넣기 전 값<br>(ppm)</th><th>1분 후</th><th>3분 후</th><th>5분 후</th><th>최댓값</th><th>원래 값으로<br>돌아온 시간</th></tr>
+  <tr><td>C (0.01 M)</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>B (0.1 M)</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+</table>
+<p style="font-size:9.2pt;color:var(--muted)">화면에 "5 미만" 또는 "500 초과"로 나오면 그대로 적습니다. 측정 범위 밖이라는 뜻입니다.</p>
+
+<h2><span class="n">8</span>생각해 보기</h2>
+<ol class="q">
+  <li>용액 C와 B의 결과를 비교하면, 용액의 농도와 측정값 사이에는 어떤 관계가 있나요?</li>
+  <li>같은 용액 B를 뚜껑을 연 채 10 cm 거리에서 측정하면 값이 어떻게 될지 예상하고, 그 까닭을 '확산'이라는 낱말을 사용하여 설명해 봅시다.</li>
+  <li>용액을 넣었을 때 값이 올라가는 데 걸린 시간과, 꺼낸 뒤 원래대로 돌아오는 데 걸린 시간 중 어느 쪽이 더 길었나요? 그 까닭을 추리해 봅시다.</li>
+  <li>측정 결과를 더 믿을 만하게 하려면 실험 방법을 어떻게 바꾸면 좋을지 한 가지 제안해 봅시다.</li>
+</ol>
+
+<div class="box note">
+  <b>측정값을 읽을 때 주의할 점</b><br>
+  · 측정기의 ppm은 센서 특성 곡선으로 계산한 <b>추정값</b>입니다. 정확한 농도보다 <b>변화의 방향과 크기</b>를 비교하는 데 사용하세요.<br>
+  · 센서는 알코올(손 소독제)이나 습도·온도 변화에도 반응합니다. 실험 중 손 소독제를 사용하지 않습니다.<br>
+  · 표 3의 숫자는 교과서 값이 아니라 원리를 이해하기 위한 대략적인 추정값입니다.
+</div>
+
+<p class="foot">암모니아 측정기 탐구 활동 · 궁금한 점은 선생님께 질문하세요</p>
+</body>
+</html>
